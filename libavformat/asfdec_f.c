@@ -401,7 +401,7 @@ static int asf_read_stream_properties(AVFormatContext *s, int64_t size)
     AVStream *st;
     ASFStream *asf_st;
     ff_asf_guid g;
-    enum AVMediaType type;
+    enum AV_MediaType type;
     int type_specific_size, sizeX;
     unsigned int tag1;
     int64_t pos1, pos2, start_time;

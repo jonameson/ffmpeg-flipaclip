@@ -116,7 +116,7 @@ void ff_register_rtp_dynamic_payload_handlers(void)
 }
 
 RTPDynamicProtocolHandler *ff_rtp_handler_find_by_name(const char *name,
-                                                       enum AVMediaType codec_type)
+                                                       enum AV_MediaType codec_type)
 {
     RTPDynamicProtocolHandler *handler;
     for (handler = rtp_first_dynamic_payload_handler;
@@ -129,7 +129,7 @@ RTPDynamicProtocolHandler *ff_rtp_handler_find_by_name(const char *name,
 }
 
 RTPDynamicProtocolHandler *ff_rtp_handler_find_by_id(int id,
-                                                     enum AVMediaType codec_type)
+                                                     enum AV_MediaType codec_type)
 {
     RTPDynamicProtocolHandler *handler;
     for (handler = rtp_first_dynamic_payload_handler;

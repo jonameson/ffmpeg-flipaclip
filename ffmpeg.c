@@ -1458,7 +1458,7 @@ static void print_final_stats(int64_t total_size)
 
         for (j = 0; j < f->nb_streams; j++) {
             InputStream *ist = input_streams[f->ist_index + j];
-            enum AVMediaType type = ist->dec_ctx->codec_type;
+            enum AV_MediaType type = ist->dec_ctx->codec_type;
 
             total_size    += ist->data_size;
             total_packets += ist->nb_packets;
@@ -1492,7 +1492,7 @@ static void print_final_stats(int64_t total_size)
 
         for (j = 0; j < of->ctx->nb_streams; j++) {
             OutputStream *ost = output_streams[of->ost_index + j];
-            enum AVMediaType type = ost->enc_ctx->codec_type;
+            enum AV_MediaType type = ost->enc_ctx->codec_type;
 
             total_size    += ost->data_size;
             total_packets += ost->packets_written;

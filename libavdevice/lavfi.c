@@ -121,7 +121,7 @@ av_cold static int lavfi_read_header(AVFormatContext *avctx)
     AVFilterInOut *input_links = NULL, *output_links = NULL, *inout;
     AVFilter *buffersink, *abuffersink;
     int *pix_fmts = create_all_formats(AV_PIX_FMT_NB);
-    enum AVMediaType type;
+    enum AV_MediaType type;
     int ret = 0, i, n;
 
 #define FAIL(ERR) { ret = ERR; goto end; }

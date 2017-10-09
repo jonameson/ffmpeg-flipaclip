@@ -3844,7 +3844,7 @@ void ff_thread_report_progress2(AVCodecContext *avctx, int field, int thread, in
 
 #endif
 
-enum AVMediaType avcodec_get_type(enum AVCodecID codec_id)
+enum AV_MediaType avcodec_get_type(enum AVCodecID codec_id)
 {
     AVCodec *c= avcodec_find_decoder(codec_id);
     if(!c)

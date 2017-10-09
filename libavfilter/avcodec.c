@@ -70,7 +70,7 @@ AVFilterBufferRef *avfilter_get_audio_buffer_ref_from_frame(const AVFrame *frame
     return samplesref;
 }
 
-AVFilterBufferRef *avfilter_get_buffer_ref_from_frame(enum AVMediaType type,
+AVFilterBufferRef *avfilter_get_buffer_ref_from_frame(enum AV_MediaType type,
                                                       const AVFrame *frame,
                                                       int perms)
 {

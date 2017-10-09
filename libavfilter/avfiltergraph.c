@@ -312,7 +312,7 @@ static int filter_query_formats(AVFilterContext *ctx)
     AVFilterFormats *formats;
     AVFilterChannelLayouts *chlayouts;
     AVFilterFormats *samplerates;
-    enum AVMediaType type = ctx->inputs  && ctx->inputs [0] ? ctx->inputs [0]->type :
+    enum AV_MediaType type = ctx->inputs  && ctx->inputs [0] ? ctx->inputs [0]->type :
                             ctx->outputs && ctx->outputs[0] ? ctx->outputs[0]->type :
                             AVMEDIA_TYPE_VIDEO;
 
@@ -383,7 +383,7 @@ static AVFilterFormats *clone_filter_formats(AVFilterFormats *arg)
 
 static int can_merge_formats(AVFilterFormats *a_arg,
                              AVFilterFormats *b_arg,
-                             enum AVMediaType type,
+                             enum AV_MediaType type,
                              int is_sample_rate)
 {
     AVFilterFormats *a, *b, *ret;

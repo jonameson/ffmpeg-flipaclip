@@ -2867,7 +2867,7 @@ static int read_thread(void *arg)
 
     for (i = 0; i < ic->nb_streams; i++) {
         AVStream *st = ic->streams[i];
-        enum AVMediaType type = st->codec->codec_type;
+        enum AV_MediaType type = st->codec->codec_type;
         st->discard = AVDISCARD_ALL;
         if (type >= 0 && wanted_stream_spec[type] && st_index[type] == -1)
             if (avformat_match_stream_specifier(ic, st, wanted_stream_spec[type]) > 0)

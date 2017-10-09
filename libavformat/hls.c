@@ -158,7 +158,7 @@ struct playlist {
  * playlist is NULL).
  */
 struct rendition {
-    enum AVMediaType type;
+    enum AV_MediaType type;
     struct playlist *playlist;
     char group_id[MAX_FIELD_LEN];
     char language[MAX_FIELD_LEN];
@@ -451,7 +451,7 @@ static struct rendition *new_rendition(HLSContext *c, struct rendition_info *inf
                                       const char *url_base)
 {
     struct rendition *rend;
-    enum AVMediaType type = AVMEDIA_TYPE_UNKNOWN;
+    enum AV_MediaType type = AVMEDIA_TYPE_UNKNOWN;
     char *characteristic;
     char *chr_ptr;
     char *saveptr;
@@ -1384,7 +1384,7 @@ static int playlist_in_multiple_variants(HLSContext *c, struct playlist *pls)
 }
 
 static void add_renditions_to_variant(HLSContext *c, struct variant *var,
-                                      enum AVMediaType type, const char *group_id)
+                                      enum AV_MediaType type, const char *group_id)
 {
     int i;
 
@@ -1408,7 +1408,7 @@ static void add_renditions_to_variant(HLSContext *c, struct variant *var,
 }
 
 static void add_metadata_from_renditions(AVFormatContext *s, struct playlist *pls,
-                                         enum AVMediaType type)
+                                         enum AV_MediaType type)
 {
     int rend_idx = 0;
     int i;

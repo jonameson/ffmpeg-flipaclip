@@ -106,7 +106,7 @@ static int64_t avi_start_new_riff(AVFormatContext *s, AVIOContext *pb,
     return loff;
 }
 
-static char *avi_stream2fourcc(char *tag, int index, enum AVMediaType type)
+static char *avi_stream2fourcc(char *tag, int index, enum AV_MediaType type)
 {
     tag[0] = '0' + index / 10;
     tag[1] = '0' + index % 10;

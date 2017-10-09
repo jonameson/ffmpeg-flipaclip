@@ -681,7 +681,7 @@ static int parse_section_header(SectionHeader *h,
 
 typedef struct StreamType {
     uint32_t stream_type;
-    enum AVMediaType codec_type;
+    enum AV_MediaType codec_type;
     enum AVCodecID codec_id;
 } StreamType;
 

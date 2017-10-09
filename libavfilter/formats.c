@@ -90,7 +90,7 @@ do {                                                                            
 } while (0)
 
 AVFilterFormats *ff_merge_formats(AVFilterFormats *a, AVFilterFormats *b,
-                                  enum AVMediaType type)
+                                  enum AV_MediaType type)
 {
     AVFilterFormats *ret = NULL;
     int i, j;
@@ -333,7 +333,7 @@ int ff_add_channel_layout(AVFilterChannelLayouts **l, uint64_t channel_layout)
     return 0;
 }
 
-AVFilterFormats *ff_all_formats(enum AVMediaType type)
+AVFilterFormats *ff_all_formats(enum AV_MediaType type)
 {
     AVFilterFormats *ret = NULL;
 
@@ -549,7 +549,7 @@ static int default_query_formats_common(AVFilterContext *ctx,
                                         AVFilterChannelLayouts *(layouts)(void))
 {
     int ret;
-    enum AVMediaType type = ctx->inputs  && ctx->inputs [0] ? ctx->inputs [0]->type :
+    enum AV_MediaType type = ctx->inputs  && ctx->inputs [0] ? ctx->inputs [0]->type :
                             ctx->outputs && ctx->outputs[0] ? ctx->outputs[0]->type :
                             AVMEDIA_TYPE_VIDEO;
 

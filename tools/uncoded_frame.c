@@ -17,7 +17,7 @@ typedef struct {
 static int create_sink(Stream *st, AVFilterGraph *graph,
                        AVFilterContext *f, int idx)
 {
-    enum AVMediaType type = avfilter_pad_get_type(f->output_pads, idx);
+    enum AV_MediaType type = avfilter_pad_get_type(f->output_pads, idx);
     const char *sink_name;
     int ret;
 
