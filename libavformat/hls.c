@@ -197,8 +197,6 @@ typedef struct HLSContext {
     char *cookies;                       ///< holds HTTP cookie values set in either the initial response or as an AVOption to the HTTP protocol context
     char *headers;                       ///< holds HTTP headers set as an AVOption to the HTTP protocol context
     AVDictionary *avio_opts;
-    char *allowed_extensions;
-    int max_reload;
 } HLSContext;
 
 static int read_chomp_line(AVIOContext *s, char *buf, int maxlen)
@@ -626,19 +624,8 @@ static int open_url(HLSContext *c, URLContext **uc, const char *url, AVDictionar
         return AVERROR_INVALIDDATA;
 
     // only http(s) & file are allowed
-    if (av_strstart(proto_name, "file", NULL)) {
-        if (strcmp(c->allowed_extensions, "ALL") && !av_match_ext(url, c->allowed_extensions)) {
-            av_log(c, AV_LOG_ERROR,
-                "Filename extension of \'%s\' is not a common multimedia extension, blocked for security reasons.\n"
-                "If you wish to override this adjust allowed_extensions, you can set it to \'ALL\' to allow all\n",
-                url);
-            return AVERROR_INVALIDDATA;
-        }
-    } else if (av_strstart(proto_name, "http", NULL)) {
-        ;
-    } else
+    if (!av_strstart(proto_name, "http", NULL) && !av_strstart(proto_name, "file", NULL))
         return AVERROR_INVALIDDATA;
-
     if (!strncmp(proto_name, url, strlen(proto_name)) && url[strlen(proto_name)] == ':')
         ;
     else if (strcmp(proto_name, "file") || !strncmp(url, "file,", 5))
@@ -1253,7 +1240,6 @@ static int read_data(void *opaque, uint8_t *buf, int buf_size)
     HLSContext *c = v->parent->priv_data;
     int ret, i;
     int just_opened = 0;
-    int reload_count = 0;
 
 restart:
     if (!v->needed)
@@ -1285,9 +1271,6 @@ restart:
         reload_interval = default_reload_interval(v);
 
 reload:
-        reload_count++;
-        if (reload_count > c->max_reload)
-            return AVERROR_EOF;
         if (!v->finished &&
             av_gettime_relative() - v->last_load_time >= reload_interval) {
             if ((ret = parse_playlist(c, v->url, v, NULL)) < 0) {
@@ -1384,7 +1367,7 @@ static int playlist_in_multiple_variants(HLSContext *c, struct playlist *pls)
 }
 
 static void add_renditions_to_variant(HLSContext *c, struct variant *var,
-                                      enum AV_MediaType type, const char *group_id)
+                                      enum AVMediaType type, const char *group_id)
 {
     int i;
 
@@ -1408,7 +1391,7 @@ static void add_renditions_to_variant(HLSContext *c, struct variant *var,
 }
 
 static void add_metadata_from_renditions(AVFormatContext *s, struct playlist *pls,
-                                         enum AV_MediaType type)
+                                         enum AVMediaType type)
 {
     int rend_idx = 0;
     int i;
@@ -2012,12 +1995,6 @@ static int hls_probe(AVProbeData *p)
 static const AVOption hls_options[] = {
     {"live_start_index", "segment index to start live streams at (negative values are from the end)",
         OFFSET(live_start_index), AV_OPT_TYPE_INT, {.i64 = -3}, INT_MIN, INT_MAX, FLAGS},
-    {"allowed_extensions", "List of file extensions that hls is allowed to access",
-        OFFSET(allowed_extensions), AV_OPT_TYPE_STRING,
-        {.str = "3gp,aac,avi,flac,mkv,m3u8,m4a,m4s,m4v,mpg,mov,mp2,mp3,mp4,mpeg,mpegts,ogg,ogv,oga,ts,vob,wav"},
-        INT_MIN, INT_MAX, FLAGS},
-    {"max_reload", "Maximum number of times a insufficient list is attempted to be reloaded",
-        OFFSET(max_reload), AV_OPT_TYPE_INT, {.i64 = 1000}, 0, INT_MAX, FLAGS},
     {NULL}
 };
 

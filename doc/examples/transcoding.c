@@ -468,7 +468,7 @@ int main(int argc, char **argv)
     int ret;
     AVPacket packet = { .data = NULL, .size = 0 };
     AVFrame *frame = NULL;
-    enum AV_MediaType type;
+    enum AVMediaType type;
     unsigned int stream_index;
     unsigned int i;
     int got_frame;

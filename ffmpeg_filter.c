@@ -219,7 +219,7 @@ FilterGraph *init_simple_filtergraph(InputStream *ist, OutputStream *ost)
 static void init_input_filter(FilterGraph *fg, AVFilterInOut *in)
 {
     InputStream *ist = NULL;
-    enum AV_MediaType type = avfilter_pad_get_type(in->filter_ctx->input_pads, in->pad_idx);
+    enum AVMediaType type = avfilter_pad_get_type(in->filter_ctx->input_pads, in->pad_idx);
     int i;
 
     // TODO: support other filter types
@@ -243,7 +243,7 @@ static void init_input_filter(FilterGraph *fg, AVFilterInOut *in)
         s = input_files[file_idx]->ctx;
 
         for (i = 0; i < s->nb_streams; i++) {
-            enum AV_MediaType stream_type = s->streams[i]->codec->codec_type;
+            enum AVMediaType stream_type = s->streams[i]->codec->codec_type;
             if (stream_type != type &&
                 !(stream_type == AVMEDIA_TYPE_SUBTITLE &&
                   type == AVMEDIA_TYPE_VIDEO /* sub2video hack */))
@@ -335,7 +335,7 @@ static int insert_trim(int64_t start_time, int64_t duration,
     AVFilterGraph *graph = (*last_filter)->graph;
     AVFilterContext *ctx;
     const AVFilter *trim;
-    enum AV_MediaType type = avfilter_pad_get_type((*last_filter)->output_pads, *pad_idx);
+    enum AVMediaType type = avfilter_pad_get_type((*last_filter)->output_pads, *pad_idx);
     const char *name = (type == AVMEDIA_TYPE_VIDEO) ? "trim" : "atrim";
     int ret = 0;
 

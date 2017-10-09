@@ -888,7 +888,7 @@ skip:
             }
         }
         if (i == s->nb_streams) {
-            static const enum AV_MediaType stream_types[] = {AVMEDIA_TYPE_VIDEO, AVMEDIA_TYPE_AUDIO, AVMEDIA_TYPE_SUBTITLE};
+            static const enum AVMediaType stream_types[] = {AVMEDIA_TYPE_VIDEO, AVMEDIA_TYPE_AUDIO, AVMEDIA_TYPE_SUBTITLE};
             av_log(s, AV_LOG_WARNING, "Stream discovered after head already parsed\n");
             st = create_stream(s, stream_types[stream_type]);
             if (!st)

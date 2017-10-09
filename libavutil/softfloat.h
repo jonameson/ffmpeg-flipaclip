@@ -109,15 +109,8 @@ static inline av_const SoftFloat av_mul_sf(SoftFloat a, SoftFloat b){
  * @return Will not be more denormalized than a.
  */
 static inline av_const SoftFloat av_div_sf(SoftFloat a, SoftFloat b){
-    int64_t temp = (int64_t)a.mant * (1<<(ONE_BITS+1));
-    temp /= b.mant;
     a.exp -= b.exp;
-    a.mant = temp;
-    while (a.mant != temp) {
-        temp /= 2;
-        a.exp--;
-        a.mant = temp;
-    }
+    a.mant = ((int64_t)a.mant<<(ONE_BITS+1)) / b.mant;
     a = av_normalize1_sf(a);
     if (!a.mant || a.exp < MIN_EXP)
         return FLOAT_0;
@@ -156,10 +149,8 @@ static inline av_const SoftFloat av_sub_sf(SoftFloat a, SoftFloat b){
 //FIXME log, exp, pow
 
 /**
- * Converts a mantisse and exponent to a SoftFloat.
- * This converts a fixed point value v with frac_bits fractional bits to a
- * SoftFloat.
- * @returns a SoftFloat with value v * 2^-frac_bits
+ * Converts a mantisse and exponent to a SoftFloat
+ * @returns a SoftFloat with value v * 2^frac_bits
  */
 static inline av_const SoftFloat av_int2sf(int v, int frac_bits){
     int exp_offset = 0;
@@ -222,12 +213,12 @@ static av_unused void av_sincos_sf(int a, int *s, int *c)
     int st, ct;
 
     idx = a >> 26;
-    sign = (int32_t)((unsigned)idx << 27) >> 31;
+    sign = (idx << 27) >> 31;
     cv = av_costbl_1_sf[idx & 0xf];
     cv = (cv ^ sign) - sign;
 
     idx -= 8;
-    sign = (int32_t)((unsigned)idx << 27) >> 31;
+    sign = (idx << 27) >> 31;
     sv = av_costbl_1_sf[idx & 0xf];
     sv = (sv ^ sign) - sign;
 

@@ -1243,8 +1243,6 @@ static int decode_ics_info(AACContext *ac, IndividualChannelStream *ics,
     const MPEG4AudioConfig *const m4ac = &ac->oc[1].m4ac;
     const int aot = m4ac->object_type;
     const int sampling_index = m4ac->sampling_index;
-    int ret_fail = AVERROR_INVALIDDATA;
-
     if (aot != AOT_ER_AAC_ELD) {
         if (get_bits1(gb)) {
             av_log(ac->avctx, AV_LOG_ERROR, "Reserved bit set.\n");
@@ -1295,10 +1293,8 @@ static int decode_ics_info(AACContext *ac, IndividualChannelStream *ics,
                 ics->num_swb       =    ff_aac_num_swb_512[sampling_index];
                 ics->tns_max_bands =  ff_tns_max_bands_512[sampling_index];
             }
-            if (!ics->num_swb || !ics->swb_offset) {
-                ret_fail = AVERROR_BUG;
-                goto fail;
-            }
+            if (!ics->num_swb || !ics->swb_offset)
+                return AVERROR_BUG;
         } else {
             ics->swb_offset    =    ff_swb_offset_1024[sampling_index];
             ics->num_swb       =   ff_aac_num_swb_1024[sampling_index];
@@ -1322,8 +1318,7 @@ static int decode_ics_info(AACContext *ac, IndividualChannelStream *ics,
                 if (aot == AOT_ER_AAC_LD) {
                     av_log(ac->avctx, AV_LOG_ERROR,
                            "LTP in ER AAC LD not yet implemented.\n");
-                    ret_fail = AVERROR_PATCHWELCOME;
-                    goto fail;
+                    return AVERROR_PATCHWELCOME;
                 }
                 if ((ics->ltp.present = get_bits(gb, 1)))
                     decode_ltp(&ics->ltp, gb, ics->max_sfb);
@@ -1342,7 +1337,7 @@ static int decode_ics_info(AACContext *ac, IndividualChannelStream *ics,
     return 0;
 fail:
     ics->max_sfb = 0;
-    return ret_fail;
+    return AVERROR_INVALIDDATA;
 }
 
 /**
@@ -2148,11 +2143,7 @@ static int decode_cce(AACContext *ac, GetBitContext *gb, ChannelElement *che)
     coup->coupling_point += get_bits1(gb) || (coup->coupling_point >> 1);
 
     sign  = get_bits(gb, 1);
-#if USE_FIXED
-    scale = get_bits(gb, 2);
-#else
-    scale = cce_scale[get_bits(gb, 2)];
-#endif
+    scale = AAC_RENAME(cce_scale)[get_bits(gb, 2)];
 
     if ((ret = decode_ics(ac, sce, gb, 0, 0)))
         return ret;
@@ -2166,10 +2157,6 @@ static int decode_cce(AACContext *ac, GetBitContext *gb, ChannelElement *che)
             cge = coup->coupling_point == AFTER_IMDCT ? 1 : get_bits1(gb);
             gain = cge ? get_vlc2(gb, vlc_scalefactors.table, 7, 3) - 60: 0;
             gain_cache = GET_GAIN(scale, gain);
-#if USE_FIXED
-            if ((abs(gain_cache)-1024) >> 3 > 30)
-                return AVERROR(ERANGE);
-#endif
         }
         if (coup->coupling_point == AFTER_IMDCT) {
             coup->gain[c][0] = gain_cache;
@@ -2187,10 +2174,6 @@ static int decode_cce(AACContext *ac, GetBitContext *gb, ChannelElement *che)
                                     t >>= 1;
                                 }
                                 gain_cache = GET_GAIN(scale, t) * s;
-#if USE_FIXED
-                                if ((abs(gain_cache)-1024) >> 3 > 30)
-                                    return AVERROR(ERANGE);
-#endif
                             }
                         }
                         coup->gain[c][idx] = gain_cache;

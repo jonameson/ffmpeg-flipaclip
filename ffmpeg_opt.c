@@ -559,7 +559,7 @@ static int opt_recording_timestamp(void *optctx, const char *opt, const char *ar
     return 0;
 }
 
-static AVCodec *find_codec_or_die(const char *name, enum AV_MediaType type, int encoder)
+static AVCodec *find_codec_or_die(const char *name, enum AVMediaType type, int encoder)
 {
     const AVCodecDescriptor *desc;
     const char *codec_string = encoder ? "encoder" : "decoder";
@@ -1129,7 +1129,7 @@ static void choose_encoder(OptionsContext *o, AVFormatContext *s, OutputStream *
     }
 }
 
-static OutputStream *new_output_stream(OptionsContext *o, AVFormatContext *oc, enum AV_MediaType type, int source_index)
+static OutputStream *new_output_stream(OptionsContext *o, AVFormatContext *oc, enum AVMediaType type, int source_index)
 {
     OutputStream *ost;
     AVStream *st = avformat_new_stream(oc, NULL);
@@ -1340,7 +1340,7 @@ static char *get_ost_filters(OptionsContext *o, AVFormatContext *oc,
 }
 
 static void check_streamcopy_filters(OptionsContext *o, AVFormatContext *oc,
-                                     const OutputStream *ost, enum AV_MediaType type)
+                                     const OutputStream *ost, enum AVMediaType type)
 {
     if (ost->filters_script || ost->filters) {
         av_log(NULL, AV_LOG_ERROR,

@@ -3683,7 +3683,9 @@ void ff_free_stream(AVFormatContext *s, AVStream *st) {
     av_dict_free(&st->metadata);
     av_freep(&st->probe_data.buf);
     av_freep(&st->index_entries);
-    avcodec_free_context(&st->codec);
+    av_freep(&st->codec->extradata);
+    av_freep(&st->codec->subtitle_header);
+    av_freep(&st->codec);
     av_freep(&st->priv_data);
     if (st->info)
         av_freep(&st->info->duration_error);
@@ -3723,8 +3725,8 @@ void avformat_free_context(AVFormatContext *s)
     av_freep(&s->chapters);
     av_dict_free(&s->metadata);
     av_freep(&s->streams);
-    flush_packet_queue(s);
     av_freep(&s->internal);
+    flush_packet_queue(s);
     av_free(s);
 }
 

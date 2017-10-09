@@ -285,7 +285,7 @@ static const int qoffset_inter_tab[MAX_QUANT+1] = {
 /* magic number division by 3 from schroedinger */
 static inline int divide3(int x)
 {
-    return (int)((x+1U)*21845 + 10922) >> 16;
+    return ((x+1)*21845 + 10922) >> 16;
 }
 
 static DiracFrame *remove_frame(DiracFrame *framelist[], int picnum)
@@ -960,10 +960,6 @@ static int dirac_unpack_prediction_parameters(DiracContext *s)
                 s->globalmc[ref].perspective[0]  = dirac_get_se_golomb(gb);
                 s->globalmc[ref].perspective[1]  = dirac_get_se_golomb(gb);
             }
-            if (s->globalmc[ref].perspective_exp + (uint64_t)s->globalmc[ref].zrs_exp > 30) {
-                return AVERROR_INVALIDDATA;
-            }
-
         }
     }
 
@@ -1837,9 +1833,9 @@ static int get_delayed_pic(DiracContext *s, AVFrame *picture, int *got_frame)
 
     if (out) {
         out->reference ^= DELAYED_PIC_REF;
+        *got_frame = 1;
         if((ret = av_frame_ref(picture, out->avframe)) < 0)
             return ret;
-        *got_frame = 1;
     }
 
     return 0;

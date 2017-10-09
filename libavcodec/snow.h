@@ -561,8 +561,7 @@ static inline int get_symbol(RangeCoder *c, uint8_t *state, int is_signed){
     if(get_rac(c, state+0))
         return 0;
     else{
-        int i, e;
-        unsigned a;
+        int i, e, a;
         e= 0;
         while(get_rac(c, state+1 + FFMIN(e,9))){ //1..10
             e++;
