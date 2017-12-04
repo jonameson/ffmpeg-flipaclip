@@ -89,7 +89,7 @@ typedef struct SetPTSContext {
     char *expr_str;
     AVExpr *expr;
     double var_values[VAR_VARS_NB];
-    enum AVMediaType type;
+    enum AV_MediaType type;
 } SetPTSContext;
 
 static av_cold int init(AVFilterContext *ctx)
