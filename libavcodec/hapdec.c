@@ -24,7 +24,7 @@
  * @file
  * Hap decoder
  *
- * Fourcc: Hap1, Hap5, HapY
+ * Fourcc: Hap1, Hap5, HapY, HapA, HapM
  *
  * https://github.com/Vidvox/hap/blob/master/documentation/HapVideoDRAFT.md
  */
@@ -37,7 +37,6 @@
 #include "bytestream.h"
 #include "hap.h"
 #include "internal.h"
-#include "memory.h"
 #include "snappy.h"
 #include "texturedsp.h"
 #include "thread.h"
@@ -164,7 +163,8 @@ static int hap_parse_frame_header(AVCodecContext *avctx)
 
     if ((avctx->codec_tag == MKTAG('H','a','p','1') && (section_type & 0x0F) != HAP_FMT_RGBDXT1) ||
         (avctx->codec_tag == MKTAG('H','a','p','5') && (section_type & 0x0F) != HAP_FMT_RGBADXT5) ||
-        (avctx->codec_tag == MKTAG('H','a','p','Y') && (section_type & 0x0F) != HAP_FMT_YCOCGDXT5)) {
+        (avctx->codec_tag == MKTAG('H','a','p','Y') && (section_type & 0x0F) != HAP_FMT_YCOCGDXT5) ||
+        (avctx->codec_tag == MKTAG('H','a','p','A') && (section_type & 0x0F) != HAP_FMT_RGTC1)) {
         av_log(avctx, AV_LOG_ERROR,
                "Invalid texture format %#04x.\n", section_type & 0x0F);
         return AVERROR_INVALIDDATA;
@@ -383,9 +383,6 @@ static av_cold int hap_init(AVCodecContext *avctx)
     avctx->coded_width  = FFALIGN(avctx->width,  TEXTURE_BLOCK_W);
     avctx->coded_height = FFALIGN(avctx->height, TEXTURE_BLOCK_H);
 
-    /* Technically only one mode has alpha, but 32 bits are easier to handle */
-    avctx->pix_fmt = AV_PIX_FMT_RGBA;
-
     ff_texturedsp_init(&ctx->dxtc);
 
     switch (avctx->codec_tag) {
@@ -393,17 +390,29 @@ static av_cold int hap_init(AVCodecContext *avctx)
         texture_name = "DXT1";
         ctx->tex_rat = 8;
         ctx->tex_fun = ctx->dxtc.dxt1_block;
+        avctx->pix_fmt = AV_PIX_FMT_RGB0;
         break;
     case MKTAG('H','a','p','5'):
         texture_name = "DXT5";
         ctx->tex_rat = 16;
         ctx->tex_fun = ctx->dxtc.dxt5_block;
+        avctx->pix_fmt = AV_PIX_FMT_RGBA;
         break;
     case MKTAG('H','a','p','Y'):
         texture_name = "DXT5-YCoCg-scaled";
         ctx->tex_rat = 16;
         ctx->tex_fun = ctx->dxtc.dxt5ys_block;
+        avctx->pix_fmt = AV_PIX_FMT_RGB0;
         break;
+    case MKTAG('H','a','p','A'):
+        texture_name = "RGTC1";
+        ctx->tex_rat = 8;
+        ctx->tex_fun = ctx->dxtc.rgtc1u_block;
+        avctx->pix_fmt = AV_PIX_FMT_RGB0;
+        break;
+    case MKTAG('H','a','p','M'):
+        avpriv_report_missing_feature(avctx, "HapQAlpha");
+        return AVERROR_PATCHWELCOME;
     default:
         return AVERROR_DECODER_NOT_FOUND;
     }
@@ -427,7 +436,7 @@ static av_cold int hap_close(AVCodecContext *avctx)
 
 AVCodec ff_hap_decoder = {
     .name           = "hap",
-    .long_name      = NULL_IF_CONFIG_SMALL("Vidvox Hap decoder"),
+    .long_name      = NULL_IF_CONFIG_SMALL("Vidvox Hap"),
     .type           = AVMEDIA_TYPE_VIDEO,
     .id             = AV_CODEC_ID_HAP,
     .init           = hap_init,

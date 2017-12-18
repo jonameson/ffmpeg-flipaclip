@@ -80,10 +80,6 @@ static av_cold int decode_init(AVCodecContext *avctx)
     AnsiContext *s = avctx->priv_data;
     avctx->pix_fmt = AV_PIX_FMT_PAL8;
 
-    s->frame = av_frame_alloc();
-    if (!s->frame)
-        return AVERROR(ENOMEM);
-
     /* defaults */
     s->font        = avpriv_vga16_font;
     s->font_height = 16;
@@ -98,6 +94,11 @@ static av_cold int decode_init(AVCodecContext *avctx)
         av_log(avctx, AV_LOG_ERROR, "Invalid dimensions %d %d\n", avctx->width, avctx->height);
         return AVERROR(EINVAL);
     }
+
+    s->frame = av_frame_alloc();
+    if (!s->frame)
+        return AVERROR(ENOMEM);
+
     return 0;
 }
 
@@ -209,7 +210,7 @@ static int execute_code(AVCodecContext * avctx, int c)
         s->y = s->nb_args > 0 ? av_clip((s->args[0] - 1)*s->font_height, 0, avctx->height - s->font_height) : 0;
         s->x = s->nb_args > 1 ? av_clip((s->args[1] - 1)*FONT_WIDTH,     0, avctx->width  - FONT_WIDTH) : 0;
         break;
-    case 'h': //set creen mode
+    case 'h': //set screen mode
     case 'l': //reset screen mode
         if (s->nb_args < 2)
             s->args[0] = DEFAULT_SCREEN_MODE;
@@ -482,4 +483,5 @@ AVCodec ff_ansi_decoder = {
     .close          = decode_close,
     .decode         = decode_frame,
     .capabilities   = AV_CODEC_CAP_DR1,
+    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE,
 };
