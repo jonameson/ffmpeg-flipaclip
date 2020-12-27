@@ -198,7 +198,6 @@ static int video_decode(const char *input_filename)
 
     av_packet_unref(&pkt);
     av_frame_free(&fr);
-    avcodec_close(ctx);
     avformat_close_input(&fmt_ctx);
     avcodec_free_context(&ctx);
     av_freep(&byte_buffer);
@@ -213,8 +212,6 @@ int main(int argc, char **argv)
         av_log(NULL, AV_LOG_ERROR, "Incorrect input: expected %s <name of a video file>\nNote that test works only for huffyuv, flv and mpeg4 decoders\n", argv[0]);
         return 1;
     }
-
-    av_register_all();
 
     if (video_decode(argv[1]) != 0)
         return 1;

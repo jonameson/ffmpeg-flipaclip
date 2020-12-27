@@ -266,7 +266,6 @@ end:
     av_freep(&crc_array);
     av_freep(&pts_array);
     av_frame_free(&fr);
-    avcodec_close(ctx);
     avformat_close_input(&fmt_ctx);
     avcodec_free_context(&ctx);
     return result;
@@ -278,8 +277,6 @@ int main(int argc, char **argv)
         av_log(NULL, AV_LOG_ERROR, "Incorrect input\n");
         return 1;
     }
-
-    av_register_all();
 
     if (seek_test(argv[1], argv[2], argv[3]) != 0)
         return 1;

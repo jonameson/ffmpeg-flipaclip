@@ -158,11 +158,14 @@ const AVCodecTag ff_codec_movvideo_tags[] = {
     { AV_CODEC_ID_SGIRLE,  MKTAG('r', 'l', 'e', '1') }, /* SGI RLE 8-bit */
     { AV_CODEC_ID_MSRLE,   MKTAG('W', 'R', 'L', 'E') },
     { AV_CODEC_ID_QDRAW,   MKTAG('q', 'd', 'r', 'w') }, /* QuickDraw */
+    { AV_CODEC_ID_CDTOONS, MKTAG('Q', 'k', 'B', 'k') }, /* CDToons */
 
     { AV_CODEC_ID_RAWVIDEO, MKTAG('W', 'R', 'A', 'W') },
 
     { AV_CODEC_ID_HEVC, MKTAG('h', 'e', 'v', '1') }, /* HEVC/H.265 which indicates parameter sets may be in ES */
     { AV_CODEC_ID_HEVC, MKTAG('h', 'v', 'c', '1') }, /* HEVC/H.265 which indicates parameter sets shall not be in ES */
+    { AV_CODEC_ID_HEVC, MKTAG('d', 'v', 'h', 'e') }, /* HEVC-based Dolby Vision derived from hev1 */
+                                                     /* dvh1 is handled within mov.c */
 
     { AV_CODEC_ID_H264, MKTAG('a', 'v', 'c', '1') }, /* AVC-1/H.264 */
     { AV_CODEC_ID_H264, MKTAG('a', 'v', 'c', '2') },
@@ -185,8 +188,12 @@ const AVCodecTag ff_codec_movvideo_tags[] = {
     { AV_CODEC_ID_H264, MKTAG('r', 'v', '6', '4') }, /* X-Com Radvision */
     { AV_CODEC_ID_H264, MKTAG('x', 'a', 'l', 'g') }, /* XAVC-L HD422 produced by FCP */
     { AV_CODEC_ID_H264, MKTAG('a', 'v', 'l', 'g') }, /* Panasonic P2 AVC-LongG */
+    { AV_CODEC_ID_H264, MKTAG('d', 'v', 'a', '1') }, /* AVC-based Dolby Vision derived from avc1 */
+    { AV_CODEC_ID_H264, MKTAG('d', 'v', 'a', 'v') }, /* AVC-based Dolby Vision derived from avc3 */
 
+    { AV_CODEC_ID_VP8,  MKTAG('v', 'p', '0', '8') }, /* VP8 */
     { AV_CODEC_ID_VP9,  MKTAG('v', 'p', '0', '9') }, /* VP9 */
+    { AV_CODEC_ID_AV1,  MKTAG('a', 'v', '0', '1') }, /* AV1 */
 
     { AV_CODEC_ID_MPEG1VIDEO, MKTAG('m', '1', 'v', ' ') },
     { AV_CODEC_ID_MPEG1VIDEO, MKTAG('m', '1', 'v', '1') }, /* Apple MPEG-1 Camcorder */
@@ -283,7 +290,9 @@ const AVCodecTag ff_codec_movvideo_tags[] = {
     { AV_CODEC_ID_MAGICYUV, MKTAG('M', '0', 'R', '0') },
     { AV_CODEC_ID_MAGICYUV, MKTAG('M', '0', 'R', 'A') },
     { AV_CODEC_ID_MAGICYUV, MKTAG('M', '0', 'R', 'G') },
+    { AV_CODEC_ID_MAGICYUV, MKTAG('M', '0', 'Y', '0') },
     { AV_CODEC_ID_MAGICYUV, MKTAG('M', '0', 'Y', '2') },
+    { AV_CODEC_ID_MAGICYUV, MKTAG('M', '0', 'Y', '4') },
     { AV_CODEC_ID_MAGICYUV, MKTAG('M', '8', 'R', 'G') },
     { AV_CODEC_ID_MAGICYUV, MKTAG('M', '8', 'R', 'A') },
     { AV_CODEC_ID_MAGICYUV, MKTAG('M', '8', 'G', '0') },
@@ -304,6 +313,10 @@ const AVCodecTag ff_codec_movvideo_tags[] = {
     { AV_CODEC_ID_SHEERVIDEO, MKTAG('S', 'h', 'r', '7') },
 
     { AV_CODEC_ID_PIXLET, MKTAG('p', 'x', 'l', 't') },
+
+    { AV_CODEC_ID_NOTCHLC, MKTAG('n', 'c', 'l', 'c') },
+
+    { AV_CODEC_ID_RAWVIDEO, MKTAG('B', 'G', 'G', 'R') }, /* ASC Bayer BGGR */
 
     { AV_CODEC_ID_NONE, 0 },
 };
@@ -331,6 +344,7 @@ const AVCodecTag ff_codec_movaudio_tags[] = {
     { AV_CODEC_ID_MP1,             MKTAG('.', 'm', 'p', '1') },
     { AV_CODEC_ID_MP2,             MKTAG('.', 'm', 'p', '2') },
     { AV_CODEC_ID_MP3,             MKTAG('.', 'm', 'p', '3') },
+    { AV_CODEC_ID_MP3,             MKTAG('m', 'p', '3', ' ') }, /* vlc */
     { AV_CODEC_ID_MP3,             0x6D730055                },
     { AV_CODEC_ID_NELLYMOSER,      MKTAG('n', 'm', 'o', 's') }, /* Flash Media Server */
     { AV_CODEC_ID_NELLYMOSER,      MKTAG('N', 'E', 'L', 'L') }, /* Perian */
@@ -361,7 +375,9 @@ const AVCodecTag ff_codec_movaudio_tags[] = {
     { AV_CODEC_ID_EVRC,            MKTAG('s', 'e', 'v', 'c') }, /* 3GPP2 */
     { AV_CODEC_ID_SMV,             MKTAG('s', 's', 'm', 'v') }, /* 3GPP2 */
     { AV_CODEC_ID_FLAC,            MKTAG('f', 'L', 'a', 'C') }, /* nonstandard */
+    { AV_CODEC_ID_TRUEHD,          MKTAG('m', 'l', 'p', 'a') }, /* mp4ra.org */
     { AV_CODEC_ID_OPUS,            MKTAG('O', 'p', 'u', 's') }, /* mp4ra.org */
+    { AV_CODEC_ID_MPEGH_3D_AUDIO,  MKTAG('m', 'h', 'm', '1') }, /* MPEG-H 3D Audio bitstream */
     { AV_CODEC_ID_NONE, 0 },
 };
 
@@ -372,30 +388,155 @@ const AVCodecTag ff_codec_movsubtitle_tags[] = {
     { AV_CODEC_ID_NONE, 0 },
 };
 
+const AVCodecTag ff_codec_movdata_tags[] = {
+    { AV_CODEC_ID_BIN_DATA, MKTAG('g', 'p', 'm', 'd') },
+    { AV_CODEC_ID_NONE, 0 },
+};
+
 /* map numeric codes from mdhd atom to ISO 639 */
 /* cf. QTFileFormat.pdf p253, qtff.pdf p205 */
 /* http://developer.apple.com/documentation/mac/Text/Text-368.html */
 /* deprecated by putting the code as 3*5 bits ASCII */
 static const char mov_mdhd_language_map[][4] = {
-    /* 0-9 */
-    "eng", "fra", "ger", "ita", "dut", "sve", "spa", "dan", "por", "nor",
-    "heb", "jpn", "ara", "fin", "gre", "ice", "mlt", "tur", "hr "/*scr*/, "chi"/*ace?*/,
-    "urd", "hin", "tha", "kor", "lit", "pol", "hun", "est", "lav",    "",
-    "fo ",    "", "rus", "chi",    "", "iri", "alb", "ron", "ces", "slk",
-    "slv", "yid", "sr ", "mac", "bul", "ukr", "bel", "uzb", "kaz", "aze",
-    /*?*/
-    "aze", "arm", "geo", "mol", "kir", "tgk", "tuk", "mon",    "", "pus",
-    "kur", "kas", "snd", "tib", "nep", "san", "mar", "ben", "asm", "guj",
-    "pa ", "ori", "mal", "kan", "tam", "tel",    "", "bur", "khm", "lao",
-    /*                   roman? arabic? */
-    "vie", "ind", "tgl", "may", "may", "amh", "tir", "orm", "som", "swa",
-    /*==rundi?*/
-       "", "run",    "", "mlg", "epo",    "",    "",    "",    "",    "",
-    /* 100 */
-       "",    "",    "",    "",    "",    "",    "",    "",    "",    "",
-       "",    "",    "",    "",    "",    "",    "",    "",    "",    "",
-       "",    "",    "",    "",    "",    "",    "",    "", "wel", "baq",
-    "cat", "lat", "que", "grn", "aym", "tat", "uig", "dzo", "jav"
+    "eng",    /*   0 English */
+    "fra",    /*   1 French */
+    "ger",    /*   2 German */
+    "ita",    /*   3 Italian */
+    "dut",    /*   4 Dutch */
+    "sve",    /*   5 Swedish */
+    "spa",    /*   6 Spanish */
+    "dan",    /*   7 Danish */
+    "por",    /*   8 Portuguese */
+    "nor",    /*   9 Norwegian */
+    "heb",    /*  10 Hebrew */
+    "jpn",    /*  11 Japanese */
+    "ara",    /*  12 Arabic */
+    "fin",    /*  13 Finnish */
+    "gre",    /*  14 Greek */
+    "ice",    /*  15 Icelandic */
+    "mlt",    /*  16 Maltese */
+    "tur",    /*  17 Turkish */
+    "hr ",    /*  18 Croatian */
+    "chi",    /*  19 Traditional Chinese */
+    "urd",    /*  20 Urdu */
+    "hin",    /*  21 Hindi */
+    "tha",    /*  22 Thai */
+    "kor",    /*  23 Korean */
+    "lit",    /*  24 Lithuanian */
+    "pol",    /*  25 Polish */
+    "hun",    /*  26 Hungarian */
+    "est",    /*  27 Estonian */
+    "lav",    /*  28 Latvian */
+       "",    /*  29 Sami */
+    "fo ",    /*  30 Faroese */
+       "",    /*  31 Farsi */
+    "rus",    /*  32 Russian */
+    "chi",    /*  33 Simplified Chinese */
+       "",    /*  34 Flemish */
+    "iri",    /*  35 Irish */
+    "alb",    /*  36 Albanian */
+    "ron",    /*  37 Romanian */
+    "ces",    /*  38 Czech */
+    "slk",    /*  39 Slovak */
+    "slv",    /*  40 Slovenian */
+    "yid",    /*  41 Yiddish */
+    "sr ",    /*  42 Serbian */
+    "mac",    /*  43 Macedonian */
+    "bul",    /*  44 Bulgarian */
+    "ukr",    /*  45 Ukrainian */
+    "bel",    /*  46 Belarusian */
+    "uzb",    /*  47 Uzbek */
+    "kaz",    /*  48 Kazakh */
+    "aze",    /*  49 Azerbaijani */
+    "aze",    /*  50 AzerbaijanAr */
+    "arm",    /*  51 Armenian */
+    "geo",    /*  52 Georgian */
+    "mol",    /*  53 Moldavian */
+    "kir",    /*  54 Kirghiz */
+    "tgk",    /*  55 Tajiki */
+    "tuk",    /*  56 Turkmen */
+    "mon",    /*  57 Mongolian */
+       "",    /*  58 MongolianCyr */
+    "pus",    /*  59 Pashto */
+    "kur",    /*  60 Kurdish */
+    "kas",    /*  61 Kashmiri */
+    "snd",    /*  62 Sindhi */
+    "tib",    /*  63 Tibetan */
+    "nep",    /*  64 Nepali */
+    "san",    /*  65 Sanskrit */
+    "mar",    /*  66 Marathi */
+    "ben",    /*  67 Bengali */
+    "asm",    /*  68 Assamese */
+    "guj",    /*  69 Gujarati */
+    "pa ",    /*  70 Punjabi */
+    "ori",    /*  71 Oriya */
+    "mal",    /*  72 Malayalam */
+    "kan",    /*  73 Kannada */
+    "tam",    /*  74 Tamil */
+    "tel",    /*  75 Telugu */
+       "",    /*  76 Sinhala */
+    "bur",    /*  77 Burmese */
+    "khm",    /*  78 Khmer */
+    "lao",    /*  79 Lao */
+    "vie",    /*  80 Vietnamese */
+    "ind",    /*  81 Indonesian */
+    "tgl",    /*  82 Tagalog */
+    "may",    /*  83 MalayRoman */
+    "may",    /*  84 MalayArabic */
+    "amh",    /*  85 Amharic */
+    "tir",    /*  86 Galla */
+    "orm",    /*  87 Oromo */
+    "som",    /*  88 Somali */
+    "swa",    /*  89 Swahili */
+       "",    /*  90 Kinyarwanda */
+    "run",    /*  91 Rundi */
+       "",    /*  92 Nyanja */
+    "mlg",    /*  93 Malagasy */
+    "epo",    /*  94 Esperanto */
+       "",    /*  95  */
+       "",    /*  96  */
+       "",    /*  97  */
+       "",    /*  98  */
+       "",    /*  99  */
+       "",    /* 100  */
+       "",    /* 101  */
+       "",    /* 102  */
+       "",    /* 103  */
+       "",    /* 104  */
+       "",    /* 105  */
+       "",    /* 106  */
+       "",    /* 107  */
+       "",    /* 108  */
+       "",    /* 109  */
+       "",    /* 110  */
+       "",    /* 111  */
+       "",    /* 112  */
+       "",    /* 113  */
+       "",    /* 114  */
+       "",    /* 115  */
+       "",    /* 116  */
+       "",    /* 117  */
+       "",    /* 118  */
+       "",    /* 119  */
+       "",    /* 120  */
+       "",    /* 121  */
+       "",    /* 122  */
+       "",    /* 123  */
+       "",    /* 124  */
+       "",    /* 125  */
+       "",    /* 126  */
+       "",    /* 127  */
+    "wel",    /* 128 Welsh */
+    "baq",    /* 129 Basque */
+    "cat",    /* 130 Catalan */
+    "lat",    /* 131 Latin */
+    "que",    /* 132 Quechua */
+    "grn",    /* 133 Guarani */
+    "aym",    /* 134 Aymara */
+    "tat",    /* 135 Tatar */
+    "uig",    /* 136 Uighur */
+    "dzo",    /* 137 Dzongkha */
+    "jav",    /* 138 JavaneseRom */
 };
 
 int ff_mov_iso639_to_lang(const char lang[4], int mp4)
@@ -523,15 +664,18 @@ FF_ENABLE_DEPRECATION_WARNINGS
     len = ff_mp4_read_descr(fc, pb, &tag);
     if (tag == MP4DecSpecificDescrTag) {
         av_log(fc, AV_LOG_TRACE, "Specific MPEG-4 header len=%d\n", len);
+        /* As per 14496-3:2009 9.D.2.2, No decSpecificInfo is defined
+           for MPEG-1 Audio or MPEG-2 Audio; MPEG-2 AAC excluded. */
+        if (object_type_id == 0x69 || object_type_id == 0x6b)
+            return 0;
         if (!len || (uint64_t)len > (1<<30))
-            return -1;
-        av_free(st->codecpar->extradata);
+            return AVERROR_INVALIDDATA;
         if ((ret = ff_get_extradata(fc, st->codecpar, pb, len)) < 0)
             return ret;
         if (st->codecpar->codec_id == AV_CODEC_ID_AAC) {
             MPEG4AudioConfig cfg = {0};
-            ret = avpriv_mpeg4audio_get_config(&cfg, st->codecpar->extradata,
-                                               st->codecpar->extradata_size * 8, 1);
+            ret = avpriv_mpeg4audio_get_config2(&cfg, st->codecpar->extradata,
+                                                st->codecpar->extradata_size, 1, fc);
             if (ret < 0)
                 return ret;
             st->codecpar->channels = cfg.channels;

@@ -52,7 +52,7 @@ typedef struct JVDemuxContext {
 
 #define MAGIC " Compression by John M Phillips Copyright (C) 1995 The Bitmap Brothers Ltd."
 
-static int read_probe(AVProbeData *pd)
+static int read_probe(const AVProbeData *pd)
 {
     if (pd->buf[0] == 'J' && pd->buf[1] == 'V' && strlen(MAGIC) + 4 <= pd->buf_size &&
         !memcmp(pd->buf + 4, MAGIC, strlen(MAGIC)))
@@ -92,7 +92,7 @@ static int read_header(AVFormatContext *s)
     vst->codecpar->height      = avio_rl16(pb);
     vst->duration           =
     vst->nb_frames          =
-    ast->nb_index_entries   = avio_rl16(pb);
+    ast->internal->nb_index_entries   = avio_rl16(pb);
     avpriv_set_pts_info(vst, 64, avio_rl16(pb), 1000);
 
     avio_skip(pb, 4);
@@ -107,18 +107,19 @@ static int read_header(AVFormatContext *s)
 
     avio_skip(pb, 10);
 
-    ast->index_entries = av_malloc(ast->nb_index_entries *
-                                   sizeof(*ast->index_entries));
-    if (!ast->index_entries)
+    ast->internal->index_entries = av_malloc(ast->internal->nb_index_entries *
+                                   sizeof(*ast->internal->index_entries));
+    if (!ast->internal->index_entries)
         return AVERROR(ENOMEM);
 
-    jv->frames = av_malloc(ast->nb_index_entries * sizeof(JVFrame));
-    if (!jv->frames)
+    jv->frames = av_malloc(ast->internal->nb_index_entries * sizeof(JVFrame));
+    if (!jv->frames) {
+        av_freep(&ast->internal->index_entries);
         return AVERROR(ENOMEM);
-
-    offset = 0x68 + ast->nb_index_entries * 16;
-    for (i = 0; i < ast->nb_index_entries; i++) {
-        AVIndexEntry *e   = ast->index_entries + i;
+    }
+    offset = 0x68 + ast->internal->nb_index_entries * 16;
+    for (i = 0; i < ast->internal->nb_index_entries; i++) {
+        AVIndexEntry *e   = ast->internal->index_entries + i;
         JVFrame      *jvf = jv->frames + i;
 
         /* total frame size including audio, video, palette data and padding */
@@ -137,6 +138,8 @@ static int read_header(AVFormatContext *s)
                     - jvf->palette_size < 0) {
             if (s->error_recognition & AV_EF_EXPLODE) {
                 read_close(s);
+                av_freep(&jv->frames);
+                av_freep(&ast->internal->index_entries);
                 return AVERROR_INVALIDDATA;
             }
             jvf->audio_size   =
@@ -165,17 +168,18 @@ static int read_packet(AVFormatContext *s, AVPacket *pkt)
     JVDemuxContext *jv = s->priv_data;
     AVIOContext *pb = s->pb;
     AVStream *ast = s->streams[0];
+    int ret;
 
-    while (!avio_feof(s->pb) && jv->pts < ast->nb_index_entries) {
-        const AVIndexEntry *e   = ast->index_entries + jv->pts;
+    while (!avio_feof(s->pb) && jv->pts < ast->internal->nb_index_entries) {
+        const AVIndexEntry *e   = ast->internal->index_entries + jv->pts;
         const JVFrame      *jvf = jv->frames + jv->pts;
 
         switch (jv->state) {
         case JV_AUDIO:
             jv->state++;
             if (jvf->audio_size) {
-                if (av_get_packet(s->pb, pkt, jvf->audio_size) < 0)
-                    return AVERROR(ENOMEM);
+                if ((ret = av_get_packet(s->pb, pkt, jvf->audio_size)) < 0)
+                    return ret;
                 pkt->stream_index = 0;
                 pkt->pts          = e->timestamp;
                 pkt->flags       |= AV_PKT_FLAG_KEY;
@@ -184,10 +188,9 @@ static int read_packet(AVFormatContext *s, AVPacket *pkt)
         case JV_VIDEO:
             jv->state++;
             if (jvf->video_size || jvf->palette_size) {
-                int ret;
                 int size = jvf->video_size + jvf->palette_size;
-                if (av_new_packet(pkt, size + JV_PREAMBLE_SIZE))
-                    return AVERROR(ENOMEM);
+                if ((ret = av_new_packet(pkt, size + JV_PREAMBLE_SIZE)) < 0)
+                    return ret;
 
                 AV_WL32(pkt->data, jvf->video_size);
                 pkt->data[4] = jvf->video_type;
@@ -241,9 +244,9 @@ static int read_seek(AVFormatContext *s, int stream_index,
         return 0;
     }
 
-    if (i < 0 || i >= ast->nb_index_entries)
+    if (i < 0 || i >= ast->internal->nb_index_entries)
         return 0;
-    if (avio_seek(s->pb, ast->index_entries[i].pos, SEEK_SET) < 0)
+    if (avio_seek(s->pb, ast->internal->index_entries[i].pos, SEEK_SET) < 0)
         return -1;
 
     jv->state = JV_AUDIO;

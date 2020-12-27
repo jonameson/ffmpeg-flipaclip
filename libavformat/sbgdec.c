@@ -197,7 +197,7 @@ static int str_to_time(const char *str, int64_t *rtime)
         if (end > cur + 1)
             cur = end;
     }
-    *rtime = (hours * 3600 + minutes * 60 + seconds) * AV_TIME_BASE;
+    *rtime = (hours * 3600LL + minutes * 60LL + seconds) * AV_TIME_BASE;
     return cur - str;
 }
 
@@ -474,6 +474,8 @@ static int parse_timestamp(struct sbg_parser *p,
     while (lex_char(p, '+')) {
         if (!lex_time(p, &dt))
             return AVERROR_INVALIDDATA;
+        if (av_sat_add64(rel, dt) - dt != rel)
+            return AVERROR_INVALIDDATA;
         rel += dt;
         r = 1;
     }
@@ -536,6 +538,9 @@ static int parse_time_sequence(struct sbg_parser *p, int inblock)
         return AVERROR_INVALIDDATA;
     }
     ts.type = p->current_time.type;
+
+    if (av_sat_add64(p->current_time.t, rel_ts) != p->current_time.t + (uint64_t)rel_ts)
+        return AVERROR_INVALIDDATA;
     ts.t    = p->current_time.t + rel_ts;
     r = parse_fade(p, &fade);
     if (r < 0)
@@ -1327,7 +1332,7 @@ static int generate_intervals(void *log, struct sbg_script *s, int sample_rate,
 static int encode_intervals(struct sbg_script *s, AVCodecParameters *par,
                             struct ws_intervals *inter)
 {
-    int i, edata_size = 4;
+    int i, edata_size = 4, ret;
     uint8_t *edata;
 
     for (i = 0; i < inter->nb_inter; i++) {
@@ -1336,8 +1341,8 @@ static int encode_intervals(struct sbg_script *s, AVCodecParameters *par,
         if (edata_size < 0)
             return AVERROR(ENOMEM);
     }
-    if (ff_alloc_extradata(par, edata_size))
-        return AVERROR(ENOMEM);
+    if ((ret = ff_alloc_extradata(par, edata_size)) < 0)
+        return ret;
     edata = par->extradata;
 
 #define ADD_EDATA32(v) do { AV_WL32(edata, (v)); edata += 4; } while(0)
@@ -1367,7 +1372,7 @@ static int encode_intervals(struct sbg_script *s, AVCodecParameters *par,
     return 0;
 }
 
-static av_cold int sbg_read_probe(AVProbeData *p)
+static av_cold int sbg_read_probe(const AVProbeData *p)
 {
     int r, score;
     struct sbg_script script = { 0 };
@@ -1411,6 +1416,11 @@ static av_cold int sbg_read_header(AVFormatContext *avf)
     if (r < 0)
         goto fail;
 
+    if (script.end_ts != AV_NOPTS_VALUE && script.end_ts < script.start_ts) {
+        r = AVERROR_INVALIDDATA;
+        goto fail;
+    }
+
     st = avformat_new_stream(avf, NULL);
     if (!st)
         return AVERROR(ENOMEM);
@@ -1446,6 +1456,7 @@ fail:
 static int sbg_read_packet(AVFormatContext *avf, AVPacket *packet)
 {
     int64_t ts, end_ts;
+    int ret;
 
     ts = avf->streams[0]->cur_dts;
     end_ts = ts + avf->streams[0]->codecpar->frame_size;
@@ -1454,8 +1465,8 @@ static int sbg_read_packet(AVFormatContext *avf, AVPacket *packet)
                        end_ts);
     if (end_ts <= ts)
         return AVERROR_EOF;
-    if (av_new_packet(packet, 12) < 0)
-        return AVERROR(ENOMEM);
+    if ((ret = av_new_packet(packet, 12)) < 0)
+        return ret;
     packet->dts = packet->pts = ts;
     packet->duration = end_ts - ts;
     AV_WL64(packet->data + 0, ts);

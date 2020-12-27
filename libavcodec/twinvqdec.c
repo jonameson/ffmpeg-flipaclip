@@ -404,7 +404,7 @@ static av_cold int twinvq_decode_init(AVCodecContext *avctx)
     tctx->frame_size     = avctx->bit_rate * tctx->mtab->size
                                            / avctx->sample_rate + 8;
     tctx->is_6kbps       = 0;
-    if (avctx->block_align && avctx->block_align * 8 / tctx->frame_size > 1) {
+    if (avctx->block_align && avctx->block_align * 8LL / tctx->frame_size > 1) {
         av_log(avctx, AV_LOG_ERROR,
                "VQF TwinVQ should have only one frame per packet\n");
         return AVERROR_INVALIDDATA;
@@ -422,7 +422,7 @@ AVCodec ff_twinvq_decoder = {
     .init           = twinvq_decode_init,
     .close          = ff_twinvq_decode_close,
     .decode         = ff_twinvq_decode_frame,
-    .capabilities   = AV_CODEC_CAP_DR1,
+    .capabilities   = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_CHANNEL_CONF,
     .sample_fmts    = (const enum AVSampleFormat[]) { AV_SAMPLE_FMT_FLTP,
                                                       AV_SAMPLE_FMT_NONE },
 };

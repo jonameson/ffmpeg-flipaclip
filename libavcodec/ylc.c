@@ -22,6 +22,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define YLC_VLC_BITS 10
+
 #include "libavutil/imgutils.h"
 #include "libavutil/internal.h"
 #include "libavutil/intreadwrite.h"
@@ -149,7 +151,8 @@ static int build_vlc(AVCodecContext *avctx, VLC *vlc, const uint32_t *table)
 
     get_tree_codes(bits, lens, xlat, nodes, cur_node - 1, 0, 0, &pos);
 
-    return ff_init_vlc_sparse(vlc, 10, pos, lens, 2, 2, bits, 4, 4, xlat, 1, 1, 0);
+    return ff_init_vlc_sparse(vlc, YLC_VLC_BITS, pos, lens, 2, 2,
+                              bits, 4, 4, xlat, 1, 1, 0);
 }
 
 static const uint8_t table_y1[] = {
@@ -371,7 +374,7 @@ static int decode_frame(AVCodecContext *avctx,
                 return AVERROR_INVALIDDATA;
 
             if (get_bits1(&gb)) {
-                int val = get_vlc2(&gb, s->vlc[0].table, s->vlc[0].bits, 3);
+                int val = get_vlc2(&gb, s->vlc[0].table, YLC_VLC_BITS, 3);
                 if (val < 0) {
                     return AVERROR_INVALIDDATA;
                 } else if (val < 0xE1) {
@@ -394,10 +397,10 @@ static int decode_frame(AVCodecContext *avctx,
             } else {
                 int y1, y2, u, v;
 
-                y1 = get_vlc2(&gb, s->vlc[1].table, s->vlc[1].bits, 3);
-                u  = get_vlc2(&gb, s->vlc[2].table, s->vlc[2].bits, 3);
-                y2 = get_vlc2(&gb, s->vlc[1].table, s->vlc[1].bits, 3);
-                v  = get_vlc2(&gb, s->vlc[3].table, s->vlc[3].bits, 3);
+                y1 = get_vlc2(&gb, s->vlc[1].table, YLC_VLC_BITS, 3);
+                u  = get_vlc2(&gb, s->vlc[2].table, YLC_VLC_BITS, 3);
+                y2 = get_vlc2(&gb, s->vlc[1].table, YLC_VLC_BITS, 3);
+                v  = get_vlc2(&gb, s->vlc[3].table, YLC_VLC_BITS, 3);
                 if (y1 < 0 || y2 < 0 || u < 0 || v < 0)
                     return AVERROR_INVALIDDATA;
                 dst[x    ] = y1;
@@ -453,24 +456,6 @@ static int decode_frame(AVCodecContext *avctx,
     return avpkt->size;
 }
 
-#if HAVE_THREADS
-static int init_thread_copy(AVCodecContext *avctx)
-{
-    YLCContext *s = avctx->priv_data;
-
-    memset(&s->vlc[0], 0, sizeof(VLC));
-    memset(&s->vlc[1], 0, sizeof(VLC));
-    memset(&s->vlc[2], 0, sizeof(VLC));
-    memset(&s->vlc[3], 0, sizeof(VLC));
-    s->table_bits = NULL;
-    s->table_bits_size = 0;
-    s->bitstream_bits = NULL;
-    s->bitstream_bits_size = 0;
-
-    return 0;
-}
-#endif
-
 static av_cold int decode_end(AVCodecContext *avctx)
 {
     YLCContext *s = avctx->priv_data;
@@ -494,7 +479,6 @@ AVCodec ff_ylc_decoder = {
     .id             = AV_CODEC_ID_YLC,
     .priv_data_size = sizeof(YLCContext),
     .init           = decode_init,
-    .init_thread_copy = ONLY_IF_THREADS_ENABLED(init_thread_copy),
     .close          = decode_end,
     .decode         = decode_frame,
     .capabilities   = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_FRAME_THREADS,

@@ -39,12 +39,17 @@
 #include "hpeldsp.h"
 #include "idctdsp.h"
 
+#undef near /* This file uses struct member 'near' which in windows.h is defined as empty. */
+
 #define MAX_COMPONENTS 4
 
 typedef struct MJpegDecodeContext {
     AVClass *class;
     AVCodecContext *avctx;
     GetBitContext gb;
+    int buf_size;
+
+    AVPacket *pkt;
 
     int start_code; /* current start code */
     int buffer_size;
@@ -61,6 +66,7 @@ typedef struct MJpegDecodeContext {
     int lossless;
     int ls;
     int progressive;
+    int bayer;          /* true if it's a bayer-encoded JPEG embedded in a DNG */
     int rgb;
     uint8_t upscale_h[4];
     uint8_t upscale_v[4];
@@ -135,13 +141,28 @@ typedef struct MJpegDecodeContext {
     int *iccdatalens;
     int iccnum;
     int iccread;
+
+    AVFrame *smv_frame;
+    int smv_frames_per_jpeg;
+    int smv_next_frame;
+
+    // Raw stream data for hwaccel use.
+    const uint8_t *raw_image_buffer;
+    size_t         raw_image_buffer_size;
+    const uint8_t *raw_scan_buffer;
+    size_t         raw_scan_buffer_size;
+
+    uint8_t raw_huffman_lengths[2][4][16];
+    uint8_t raw_huffman_values[2][4][256];
+
+    enum AVPixelFormat hwaccel_sw_pix_fmt;
+    enum AVPixelFormat hwaccel_pix_fmt;
+    void *hwaccel_picture_private;
 } MJpegDecodeContext;
 
 int ff_mjpeg_decode_init(AVCodecContext *avctx);
 int ff_mjpeg_decode_end(AVCodecContext *avctx);
-int ff_mjpeg_decode_frame(AVCodecContext *avctx,
-                          void *data, int *got_frame,
-                          AVPacket *avpkt);
+int ff_mjpeg_receive_frame(AVCodecContext *avctx, AVFrame *frame);
 int ff_mjpeg_decode_dqt(MJpegDecodeContext *s);
 int ff_mjpeg_decode_dht(MJpegDecodeContext *s);
 int ff_mjpeg_decode_sof(MJpegDecodeContext *s);
@@ -151,5 +172,7 @@ int ff_mjpeg_decode_sos(MJpegDecodeContext *s,
 int ff_mjpeg_find_marker(MJpegDecodeContext *s,
                          const uint8_t **buf_ptr, const uint8_t *buf_end,
                          const uint8_t **unescaped_buf_ptr, int *unescaped_buf_size);
+
+int ff_sp5x_process_packet(AVCodecContext *avctx, AVPacket *avpkt);
 
 #endif /* AVCODEC_MJPEGDEC_H */

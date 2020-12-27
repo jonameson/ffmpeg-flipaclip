@@ -130,8 +130,8 @@ void ff_mjpeg_build_huffman_codes(uint8_t *huff_size, uint16_t *huff_code,
 {
     int i, j, k,nb, code, sym;
 
-    code = 0;
     k = 0;
+    code = 0;
     for(i=1;i<=16;i++) {
         nb = bits_table[i];
         for(j=0;j<nb;j++) {

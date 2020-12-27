@@ -104,6 +104,7 @@ static av_cold int init(AVFilterContext *ctx)
     char *arg, *arg0, *tokenizer, *args = av_strdup(pan->args);
     int out_ch_id, in_ch_id, len, named, ret, sign = 1;
     int nb_in_channels[2] = { 0, 0 }; // number of unnamed and named input channels
+    int used_out_ch[MAX_CHANNELS] = {0};
     double gain;
 
     if (!pan->args) {
@@ -127,6 +128,7 @@ static av_cold int init(AVFilterContext *ctx)
 
     /* parse channel specifications */
     while ((arg = arg0 = av_strtok(NULL, "|", &tokenizer))) {
+        int used_in_ch[MAX_CHANNELS] = {0};
         /* channel name */
         if (parse_channel_name(&arg, &out_ch_id, &named)) {
             av_log(ctx, AV_LOG_ERROR,
@@ -153,6 +155,13 @@ static av_cold int init(AVFilterContext *ctx)
             ret = AVERROR(EINVAL);
             goto fail;
         }
+        if (used_out_ch[out_ch_id]) {
+            av_log(ctx, AV_LOG_ERROR,
+                   "Can not reference out channel %d twice\n", out_ch_id);
+            ret = AVERROR(EINVAL);
+            goto fail;
+        }
+        used_out_ch[out_ch_id] = 1;
         skip_spaces(&arg);
         if (*arg == '=') {
             arg++;
@@ -184,6 +193,13 @@ static av_cold int init(AVFilterContext *ctx)
                 ret = AVERROR(EINVAL);
                 goto fail;
             }
+            if (used_in_ch[in_ch_id]) {
+                av_log(ctx, AV_LOG_ERROR,
+                       "Can not reference in channel %d twice\n", in_ch_id);
+                ret = AVERROR(EINVAL);
+                goto fail;
+            }
+            used_in_ch[in_ch_id] = 1;
             pan->gain[out_ch_id][in_ch_id] = sign * gain;
             skip_spaces(&arg);
             if (!*arg)
@@ -250,7 +266,7 @@ static int query_formats(AVFilterContext *ctx)
 
     // inlink supports any channel layout
     layouts = ff_all_channel_counts();
-    if ((ret = ff_channel_layouts_ref(layouts, &inlink->out_channel_layouts)) < 0)
+    if ((ret = ff_channel_layouts_ref(layouts, &inlink->outcfg.channel_layouts)) < 0)
         return ret;
 
     // outlink supports only requested output channel layout
@@ -259,7 +275,7 @@ static int query_formats(AVFilterContext *ctx)
                           pan->out_channel_layout ? pan->out_channel_layout :
                           FF_COUNT2LAYOUT(pan->nb_output_channels))) < 0)
         return ret;
-    return ff_channel_layouts_ref(layouts, &outlink->in_channel_layouts);
+    return ff_channel_layouts_ref(layouts, &outlink->incfg.channel_layouts);
 }
 
 static int config_props(AVFilterLink *link)
@@ -408,7 +424,7 @@ static av_cold void uninit(AVFilterContext *ctx)
 #define OFFSET(x) offsetof(PanContext, x)
 
 static const AVOption pan_options[] = {
-    { "args", NULL, OFFSET(args), AV_OPT_TYPE_STRING, { .str = NULL }, CHAR_MIN, CHAR_MAX, AV_OPT_FLAG_AUDIO_PARAM | AV_OPT_FLAG_FILTERING_PARAM },
+    { "args", NULL, OFFSET(args), AV_OPT_TYPE_STRING, { .str = NULL }, 0, 0, AV_OPT_FLAG_AUDIO_PARAM | AV_OPT_FLAG_FILTERING_PARAM },
     { NULL }
 };
 

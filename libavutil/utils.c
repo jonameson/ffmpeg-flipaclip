@@ -41,9 +41,6 @@ unsigned avutil_version(void)
     if (checks_done)
         return LIBAVUTIL_VERSION_INT;
 
-#if FF_API_VDPAU
-    av_assert0(AV_PIX_FMT_VDA_VLD == 81); //check if the pix fmt enum has not had anything inserted or removed by mistake
-#endif
     av_assert0(AV_SAMPLE_FMT_DBLP == 9);
     av_assert0(AVMEDIA_TYPE_ATTACHMENT == 4);
     av_assert0(AV_PICTURE_TYPE_BI == 7);
@@ -73,10 +70,10 @@ const char *avutil_configuration(void)
 const char *avutil_license(void)
 {
 #define LICENSE_PREFIX "libavutil license: "
-    return LICENSE_PREFIX FFMPEG_LICENSE + sizeof(LICENSE_PREFIX) - 1;
+    return &LICENSE_PREFIX FFMPEG_LICENSE[sizeof(LICENSE_PREFIX) - 1];
 }
 
-const char *av_get_media_type_string(enum AV_MediaType media_type)
+const char *av_get_media_type_string(enum AVMediaType media_type)
 {
     switch (media_type) {
     case AVMEDIA_TYPE_VIDEO:      return "video";

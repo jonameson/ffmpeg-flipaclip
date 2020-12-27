@@ -31,7 +31,7 @@
 #include "libavutil/common.h"
 #include "libavutil/samplefmt.h"
 
-#define NUMBER_OF_FRAMES 200
+#define NUMBER_OF_AUDIO_FRAMES 200
 #define NAME_BUFF_SIZE 100
 
 /* generate i-th frame of test audio */
@@ -126,7 +126,7 @@ static int run_test(AVCodec *enc, AVCodec *dec, AVCodecContext *enc_ctx,
     in_frame->nb_samples = enc_ctx->frame_size;
     in_frame->format = enc_ctx->sample_fmt;
     in_frame->channel_layout = enc_ctx->channel_layout;
-    if (av_frame_get_buffer(in_frame, 32) != 0) {
+    if (av_frame_get_buffer(in_frame, 0) != 0) {
         av_log(NULL, AV_LOG_ERROR, "Can't allocate a buffer for input frame\n");
         return AVERROR(ENOMEM);
     }
@@ -137,19 +137,19 @@ static int run_test(AVCodec *enc, AVCodec *dec, AVCodecContext *enc_ctx,
         return AVERROR(ENOMEM);
     }
 
-    raw_in = av_malloc(in_frame->linesize[0] * NUMBER_OF_FRAMES);
+    raw_in = av_malloc(in_frame->linesize[0] * NUMBER_OF_AUDIO_FRAMES);
     if (!raw_in) {
         av_log(NULL, AV_LOG_ERROR, "Can't allocate memory for raw_in\n");
         return AVERROR(ENOMEM);
     }
 
-    raw_out = av_malloc(in_frame->linesize[0] * NUMBER_OF_FRAMES);
+    raw_out = av_malloc(in_frame->linesize[0] * NUMBER_OF_AUDIO_FRAMES);
     if (!raw_out) {
         av_log(NULL, AV_LOG_ERROR, "Can't allocate memory for raw_out\n");
         return AVERROR(ENOMEM);
     }
 
-    for (i = 0; i < NUMBER_OF_FRAMES; i++) {
+    for (i = 0; i < NUMBER_OF_AUDIO_FRAMES; i++) {
         av_init_packet(&enc_pkt);
         enc_pkt.data = NULL;
         enc_pkt.size = 0;
@@ -209,7 +209,7 @@ static int run_test(AVCodec *enc, AVCodec *dec, AVCodecContext *enc_ctx,
         av_packet_unref(&enc_pkt);
     }
 
-    if (memcmp(raw_in, raw_out, out_frame_bytes * NUMBER_OF_FRAMES) != 0) {
+    if (memcmp(raw_in, raw_out, out_frame_bytes * NUMBER_OF_AUDIO_FRAMES) != 0) {
         av_log(NULL, AV_LOG_ERROR, "Output differs\n");
         return 1;
     }
@@ -223,20 +223,6 @@ static int run_test(AVCodec *enc, AVCodec *dec, AVCodecContext *enc_ctx,
     return 0;
 }
 
-static int close_encoder(AVCodecContext **enc_ctx)
-{
-    avcodec_close(*enc_ctx);
-    av_freep(enc_ctx);
-    return 0;
-}
-
-static int close_decoder(AVCodecContext **dec_ctx)
-{
-    avcodec_close(*dec_ctx);
-    av_freep(dec_ctx);
-    return 0;
-}
-
 int main(void)
 {
     AVCodec *enc = NULL, *dec = NULL;
@@ -244,8 +230,6 @@ int main(void)
     uint64_t channel_layouts[] = {AV_CH_LAYOUT_STEREO, AV_CH_LAYOUT_5POINT1_BACK, AV_CH_LAYOUT_SURROUND, AV_CH_LAYOUT_STEREO_DOWNMIX};
     int sample_rates[] = {8000, 44100, 48000, 192000};
     int cl, sr;
-
-    avcodec_register_all();
 
     enc = avcodec_find_encoder(AV_CODEC_ID_FLAC);
     if (!enc) {
@@ -267,8 +251,8 @@ int main(void)
                 return 1;
             if (run_test(enc, dec, enc_ctx, dec_ctx) != 0)
                 return 1;
-            close_encoder(&enc_ctx);
-            close_decoder(&dec_ctx);
+            avcodec_free_context(&enc_ctx);
+            avcodec_free_context(&dec_ctx);
         }
     }
 

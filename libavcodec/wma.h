@@ -123,6 +123,7 @@ typedef struct WMACodecContext {
     uint8_t last_superframe[MAX_CODED_SUPERFRAME_SIZE + AV_INPUT_BUFFER_PADDING_SIZE]; /* padding added */
     int last_bitoffset;
     int last_superframe_len;
+    int exponents_initialized[MAX_CHANNELS];
     float noise_table[NOISE_TAB_SIZE];
     int noise_index;
     float noise_mult; /* XXX: suppress that and integrate it in the noise array */
@@ -138,8 +139,7 @@ typedef struct WMACodecContext {
 #endif /* TRACE */
 } WMACodecContext;
 
-extern const uint16_t ff_wma_hgain_huffcodes[37];
-extern const uint8_t ff_wma_hgain_huffbits[37];
+extern const uint8_t ff_wma_hgain_hufftab[37][2];
 extern const float ff_wma_lsp_codebook[NB_LSP_COEFS][16];
 extern const uint32_t ff_aac_scalefactor_code[121];
 extern const uint8_t  ff_aac_scalefactor_bits[121];

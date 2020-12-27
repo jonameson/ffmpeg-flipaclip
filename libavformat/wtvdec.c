@@ -65,22 +65,21 @@ static int64_t seek_by_sector(AVIOContext *pb, int64_t sector, int64_t offset)
 }
 
 /**
- * @return bytes read, 0 on end of file, or <0 on error
+ * @return bytes read, AVERROR_EOF on end of file, or <0 on error
  */
 static int wtvfile_read_packet(void *opaque, uint8_t *buf, int buf_size)
 {
     WtvFile *wf = opaque;
     AVIOContext *pb = wf->pb_filesystem;
-    int nread = 0;
+    int nread = 0, n = 0;
 
     if (wf->error || pb->error)
         return -1;
     if (wf->position >= wf->length || avio_feof(pb))
-        return 0;
+        return AVERROR_EOF;
 
     buf_size = FFMIN(buf_size, wf->length - wf->position);
     while(nread < buf_size) {
-        int n;
         int remaining_in_sector = (1 << wf->sector_bits) - (wf->position & ((1 << wf->sector_bits) - 1));
         int read_request        = FFMIN(buf_size - nread, remaining_in_sector);
 
@@ -100,7 +99,7 @@ static int wtvfile_read_packet(void *opaque, uint8_t *buf, int buf_size)
             }
         }
     }
-    return nread;
+    return nread ? nread : n;
 }
 
 /**
@@ -149,7 +148,7 @@ static int read_ints(AVIOContext *pb, uint32_t *data, int count)
  * @param depth         File allocation table depth
  * @return NULL on error
  */
-static AVIOContext * wtvfile_open_sector(int first_sector, uint64_t length, int depth, AVFormatContext *s)
+static AVIOContext * wtvfile_open_sector(unsigned first_sector, uint64_t length, int depth, AVFormatContext *s)
 {
     AVIOContext *pb;
     WtvFile *wf;
@@ -274,6 +273,11 @@ static AVIOContext * wtvfile_open2(AVFormatContext *s, const uint8_t *buf, int b
                    "bad filename length, remaining directory entries ignored\n");
             break;
         }
+        if (dir_length == 0) {
+            av_log(s, AV_LOG_ERROR,
+                   "bad dir length, remaining directory entries ignored\n");
+            break;
+        }
         if (48 + (int64_t)name_size > buf_end - buf) {
             av_log(s, AV_LOG_ERROR, "filename exceeds buffer size; remaining directory entries ignored\n");
             break;
@@ -290,7 +294,7 @@ static AVIOContext * wtvfile_open2(AVFormatContext *s, const uint8_t *buf, int b
 
         buf += dir_length;
     }
-    return 0;
+    return NULL;
 }
 
 #define wtvfile_open(s, buf, buf_size, filename) \
@@ -371,7 +375,7 @@ static const ff_asf_guid mediasubtype_dtvccdata =
 static const ff_asf_guid mediasubtype_mpeg2_sections =
     {0x79,0x85,0x9F,0x4A,0xF8,0x6B,0x92,0x43,0x8A,0x6D,0xD2,0xDD,0x09,0xFA,0x78,0x61};
 
-static int read_probe(AVProbeData *p)
+static int read_probe(const AVProbeData *p)
 {
     return ff_guidcmp(p->buf, ff_wtv_guid) ? 0 : AVPROBE_SCORE_MAX;
 }
@@ -904,10 +908,10 @@ static int parse_chunks(AVFormatContext *s, int mode, int64_t seekts, int *len_p
                     wtv->last_valid_pts = wtv->pts;
                     if (wtv->epoch == AV_NOPTS_VALUE || wtv->pts < wtv->epoch)
                         wtv->epoch = wtv->pts;
-                if (mode == SEEK_TO_PTS && wtv->pts >= seekts) {
-                    avio_skip(pb, WTV_PAD8(len) - consumed);
-                    return 0;
-                }
+                    if (mode == SEEK_TO_PTS && wtv->pts >= seekts) {
+                        avio_skip(pb, WTV_PAD8(len) - consumed);
+                        return 0;
+                    }
                 }
             }
         } else if (!ff_guidcmp(g, ff_data_guid)) {
@@ -957,7 +961,8 @@ static int parse_chunks(AVFormatContext *s, int mode, int64_t seekts, int *len_p
 static int read_header(AVFormatContext *s)
 {
     WtvContext *wtv = s->priv_data;
-    int root_sector, root_size;
+    unsigned root_sector;
+    int root_size;
     uint8_t root[WTV_SECTOR_SIZE];
     AVIOContext *pb;
     int64_t timeline_pos;
@@ -992,8 +997,10 @@ static int read_header(AVFormatContext *s)
     }
 
     ret = parse_chunks(s, SEEK_TO_DATA, 0, 0);
-    if (ret < 0)
+    if (ret < 0) {
+        wtvfile_close(wtv->pb);
         return ret;
+    }
     avio_seek(wtv->pb, -32, SEEK_CUR);
 
     timeline_pos = avio_tell(s->pb); // save before opening another file

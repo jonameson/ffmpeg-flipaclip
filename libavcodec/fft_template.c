@@ -35,13 +35,6 @@
 
 #if FFT_FIXED_32
 #include "fft_table.h"
-
-static void av_cold fft_lut_init(void)
-{
-    int n = 0;
-    ff_fft_lut_init(ff_fft_offsets_lut, 0, 1 << 17, &n);
-}
-
 #else /* FFT_FIXED_32 */
 
 /* cos(2*pi*x/n) for 0<=x<=n/4, followed by its reverse */
@@ -236,10 +229,7 @@ av_cold int ff_fft_init(FFTContext *s, int nbits, int inverse)
 #endif
 
 #if FFT_FIXED_32
-    {
-        static AVOnce control = AV_ONCE_INIT;
-        ff_thread_once(&control, fft_lut_init);
-    }
+    ff_fft_lut_init();
 #else /* FFT_FIXED_32 */
 #if FFT_FLOAT
     if (ARCH_AARCH64) ff_fft_init_aarch64(s);
@@ -261,17 +251,41 @@ av_cold int ff_fft_init(FFTContext *s, int nbits, int inverse)
     if (s->fft_permutation == FF_FFT_PERM_AVX) {
         fft_perm_avx(s);
     } else {
-        for(i=0; i<n; i++) {
-            int k;
-            j = i;
-            if (s->fft_permutation == FF_FFT_PERM_SWAP_LSBS)
-                j = (j&~3) | ((j>>1)&1) | ((j<<1)&2);
-            k = -split_radix_permutation(i, n, s->inverse) & (n-1);
-            if (s->revtab)
-                s->revtab[k] = j;
-            if (s->revtab32)
-                s->revtab32[k] = j;
-        }
+#define PROCESS_FFT_PERM_SWAP_LSBS(num) do {\
+    for(i = 0; i < n; i++) {\
+        int k;\
+        j = i;\
+        j = (j & ~3) | ((j >> 1) & 1) | ((j << 1) & 2);\
+        k = -split_radix_permutation(i, n, s->inverse) & (n - 1);\
+        s->revtab##num[k] = j;\
+    } \
+} while(0);
+
+#define PROCESS_FFT_PERM_DEFAULT(num) do {\
+    for(i = 0; i < n; i++) {\
+        int k;\
+        j = i;\
+        k = -split_radix_permutation(i, n, s->inverse) & (n - 1);\
+        s->revtab##num[k] = j;\
+    } \
+} while(0);
+
+#define SPLIT_RADIX_PERMUTATION(num) do { \
+    if (s->fft_permutation == FF_FFT_PERM_SWAP_LSBS) {\
+        PROCESS_FFT_PERM_SWAP_LSBS(num) \
+    } else {\
+        PROCESS_FFT_PERM_DEFAULT(num) \
+    }\
+} while(0);
+
+    if (s->revtab)
+        SPLIT_RADIX_PERMUTATION()
+    if (s->revtab32)
+        SPLIT_RADIX_PERMUTATION(32)
+
+#undef PROCESS_FFT_PERM_DEFAULT
+#undef PROCESS_FFT_PERM_SWAP_LSBS
+#undef SPLIT_RADIX_PERMUTATION
     }
 
     return 0;
@@ -523,9 +537,11 @@ static void name(FFTComplex *z, const FFTSample *wre, unsigned int n)\
 }
 
 PASS(pass)
+#if !CONFIG_SMALL
 #undef BUTTERFLIES
 #define BUTTERFLIES BUTTERFLIES_BIG
 PASS(pass_big)
+#endif
 
 #define DECL_FFT(n,n2,n4)\
 static void fft##n(FFTComplex *z)\

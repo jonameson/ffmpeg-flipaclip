@@ -34,7 +34,7 @@
 static const struct {
     int pt;
     const char enc_name[6];
-    enum AV_MediaType codec_type;
+    enum AVMediaType codec_type;
     enum AVCodecID codec_id;
     int clock_rate;
     int audio_channels;
@@ -91,7 +91,7 @@ int ff_rtp_get_payload_type(AVFormatContext *fmt,
                             AVCodecParameters *par, int idx)
 {
     int i;
-    AVOutputFormat *ofmt = fmt ? fmt->oformat : NULL;
+    const AVOutputFormat *ofmt = fmt ? fmt->oformat : NULL;
 
     /* Was the payload type already specified for the RTP muxer? */
     if (ofmt && ofmt->priv_class && fmt->priv_data) {
@@ -140,7 +140,7 @@ const char *ff_rtp_enc_name(int payload_type)
     return "";
 }
 
-enum AVCodecID ff_rtp_codec_id(const char *buf, enum AV_MediaType codec_type)
+enum AVCodecID ff_rtp_codec_id(const char *buf, enum AVMediaType codec_type)
 {
     int i;
 

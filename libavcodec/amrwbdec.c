@@ -862,15 +862,20 @@ static float find_hb_gain(AMRWBContext *ctx, const float *synth,
 {
     int wsp = (vad > 0);
     float tilt;
+    float tmp;
 
     if (ctx->fr_cur_mode == MODE_23k85)
         return qua_hb_gain[hb_idx] * (1.0f / (1 << 14));
 
-    tilt = ctx->celpm_ctx.dot_productf(synth, synth + 1, AMRWB_SFR_SIZE - 1) /
-           ctx->celpm_ctx.dot_productf(synth, synth, AMRWB_SFR_SIZE);
+    tmp = ctx->celpm_ctx.dot_productf(synth, synth + 1, AMRWB_SFR_SIZE - 1);
+
+    if (tmp > 0) {
+        tilt = tmp / ctx->celpm_ctx.dot_productf(synth, synth, AMRWB_SFR_SIZE);
+    } else
+        tilt = 0;
 
     /* return gain bounded by [0.1, 1.0] */
-    return av_clipf((1.0 - FFMAX(0.0, tilt)) * (1.25 - 0.25 * wsp), 0.1, 1.0);
+    return av_clipf((1.0 - tilt) * (1.25 - 0.25 * wsp), 0.1, 1.0);
 }
 
 /**
@@ -1114,12 +1119,23 @@ static int amrwb_decode_frame(AVCodecContext *avctx, void *data,
     buf_out = (float *)frame->data[0];
 
     header_size      = decode_mime_header(ctx, buf);
+    expected_fr_size = ((cf_sizes_wb[ctx->fr_cur_mode] + 7) >> 3) + 1;
+
+    if (!ctx->fr_quality)
+        av_log(avctx, AV_LOG_ERROR, "Encountered a bad or corrupted frame\n");
+
+    if (ctx->fr_cur_mode == NO_DATA || !ctx->fr_quality) {
+        /* The specification suggests a "random signal" and
+           "a muting technique" to "gradually decrease the output level". */
+        av_samples_set_silence(&frame->data[0], 0, frame->nb_samples, 1, AV_SAMPLE_FMT_FLT);
+        *got_frame_ptr = 1;
+        return expected_fr_size;
+    }
     if (ctx->fr_cur_mode > MODE_SID) {
         av_log(avctx, AV_LOG_ERROR,
                "Invalid mode %d\n", ctx->fr_cur_mode);
         return AVERROR_INVALIDDATA;
     }
-    expected_fr_size = ((cf_sizes_wb[ctx->fr_cur_mode] + 7) >> 3) + 1;
 
     if (buf_size < expected_fr_size) {
         av_log(avctx, AV_LOG_ERROR,
@@ -1127,9 +1143,6 @@ static int amrwb_decode_frame(AVCodecContext *avctx, void *data,
         *got_frame_ptr = 0;
         return AVERROR_INVALIDDATA;
     }
-
-    if (!ctx->fr_quality || ctx->fr_cur_mode > MODE_SID)
-        av_log(avctx, AV_LOG_ERROR, "Encountered a bad or corrupted frame\n");
 
     if (ctx->fr_cur_mode == MODE_SID) { /* Comfort noise frame */
         avpriv_request_sample(avctx, "SID mode");
@@ -1270,7 +1283,7 @@ AVCodec ff_amrwb_decoder = {
     .priv_data_size = sizeof(AMRWBContext),
     .init           = amrwb_decode_init,
     .decode         = amrwb_decode_frame,
-    .capabilities   = AV_CODEC_CAP_DR1,
+    .capabilities   = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_CHANNEL_CONF,
     .sample_fmts    = (const enum AVSampleFormat[]){ AV_SAMPLE_FMT_FLT,
                                                      AV_SAMPLE_FMT_NONE },
 };

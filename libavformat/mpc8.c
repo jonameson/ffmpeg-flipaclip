@@ -73,7 +73,7 @@ static inline int64_t bs_get_v(const uint8_t **bs)
     return v - br;
 }
 
-static int mpc8_probe(AVProbeData *p)
+static int mpc8_probe(const AVProbeData *p)
 {
     const uint8_t *bs = p->buf + 4;
     const uint8_t *bs_end = bs + p->buf_size;
@@ -168,6 +168,7 @@ static void mpc8_parse_seektable(AVFormatContext *s, int64_t off)
     size = gb_get_v(&gb);
     if(size > UINT_MAX/4 || size > c->samples/1152){
         av_log(s, AV_LOG_ERROR, "Seek table is too big\n");
+        av_free(buf);
         return;
     }
     seekd = get_bits(&gb, 4);
@@ -177,12 +178,16 @@ static void mpc8_parse_seektable(AVFormatContext *s, int64_t off)
         av_add_index_entry(s->streams[0], pos, i, 0, 0, AVINDEX_KEYFRAME);
     }
     for(; i < size; i++){
+        if (get_bits_left(&gb) < 13) {
+            av_free(buf);
+            return;
+        }
         t = get_unary(&gb, 1, 33) << 12;
         t += get_bits(&gb, 12);
         if(t & 1)
             t = -(t & ~1);
-        pos = (t >> 1) + ppos[0]*2 - ppos[1];
-        av_add_index_entry(s->streams[0], pos, i << seekd, 0, 0, AVINDEX_KEYFRAME);
+        pos = (t >> 1) + (uint64_t)ppos[0]*2 - ppos[1];
+        av_add_index_entry(s->streams[0], pos, (int64_t)i << seekd, 0, 0, AVINDEX_KEYFRAME);
         ppos[1] = ppos[0];
         ppos[0] = pos;
     }
@@ -211,7 +216,7 @@ static int mpc8_read_header(AVFormatContext *s)
     MPCContext *c = s->priv_data;
     AVIOContext *pb = s->pb;
     AVStream *st;
-    int tag = 0;
+    int tag = 0, ret;
     int64_t size, pos;
 
     c->header_pos = avio_tell(pb);
@@ -252,12 +257,12 @@ static int mpc8_read_header(AVFormatContext *s)
     st->codecpar->codec_id = AV_CODEC_ID_MUSEPACK8;
     st->codecpar->bits_per_coded_sample = 16;
 
-    if (ff_get_extradata(s, st->codecpar, pb, 2) < 0)
-        return AVERROR(ENOMEM);
+    if ((ret = ff_get_extradata(s, st->codecpar, pb, 2)) < 0)
+        return ret;
 
     st->codecpar->channels = (st->codecpar->extradata[1] >> 4) + 1;
     st->codecpar->sample_rate = mpc8_rate[st->codecpar->extradata[0] >> 5];
-    avpriv_set_pts_info(st, 32, 1152  << (st->codecpar->extradata[1]&3)*2, st->codecpar->sample_rate);
+    avpriv_set_pts_info(st, 64, 1152  << (st->codecpar->extradata[1]&3)*2, st->codecpar->sample_rate);
     st->start_time = 0;
     st->duration = c->samples / (1152 << (st->codecpar->extradata[1]&3)*2);
     size -= avio_tell(pb) - pos;
@@ -276,7 +281,7 @@ static int mpc8_read_header(AVFormatContext *s)
 static int mpc8_read_packet(AVFormatContext *s, AVPacket *pkt)
 {
     MPCContext *c = s->priv_data;
-    int tag;
+    int tag, ret;
     int64_t pos, size;
 
     while(!avio_feof(s->pb)){
@@ -290,14 +295,14 @@ static int mpc8_read_packet(AVFormatContext *s, AVPacket *pkt)
         if (size < 0)
             return -1;
         if(tag == TAG_AUDIOPACKET){
-            if(av_get_packet(s->pb, pkt, size) < 0)
-                return AVERROR(ENOMEM);
+            if ((ret = av_get_packet(s->pb, pkt, size)) < 0)
+                return ret;
             pkt->stream_index = 0;
             pkt->duration     = 1;
             return 0;
         }
         if(tag == TAG_STREAMEND)
-            return AVERROR(EIO);
+            return AVERROR_EOF;
         mpc8_handle_chunk(s, tag, pos, size);
     }
     return AVERROR_EOF;
@@ -309,9 +314,9 @@ static int mpc8_read_seek(AVFormatContext *s, int stream_index, int64_t timestam
     int index = av_index_search_timestamp(st, timestamp, flags);
 
     if(index < 0) return -1;
-    if (avio_seek(s->pb, st->index_entries[index].pos, SEEK_SET) < 0)
+    if (avio_seek(s->pb, st->internal->index_entries[index].pos, SEEK_SET) < 0)
         return -1;
-    ff_update_cur_dts(s, st, st->index_entries[index].timestamp);
+    ff_update_cur_dts(s, st, st->internal->index_entries[index].timestamp);
     return 0;
 }
 
