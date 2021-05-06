@@ -18,6 +18,7 @@
 *.so.*
 *.swp
 *.ver
+*.DS_Store
 *_g
 \#*
 .\#*
