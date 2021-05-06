@@ -114,7 +114,7 @@ typedef int (*DynamicPayloadPacketHandlerProc)(AVFormatContext *ctx,
 
 struct RTPDynamicProtocolHandler {
     const char *enc_name;
-    enum AVMediaType codec_type;
+    enum AV_MediaType codec_type;
     enum AVCodecID codec_id;
     enum AVStreamParseType need_parsing;
     int static_payload_id; /* 0 means no payload id is set. 0 is a valid
@@ -206,7 +206,7 @@ const RTPDynamicProtocolHandler *ff_rtp_handler_iterate(void **opaque);
  * @return A rtp dynamic protocol handler if one was found, NULL otherwise.
  */
 const RTPDynamicProtocolHandler *ff_rtp_handler_find_by_name(const char *name,
-                                                  enum AVMediaType codec_type);
+                                                  enum AV_MediaType codec_type);
 /**
  * Find a registered rtp dynamic protocol handler with a matching codec ID.
  *
@@ -214,7 +214,7 @@ const RTPDynamicProtocolHandler *ff_rtp_handler_find_by_name(const char *name,
  * @return A rtp dynamic protocol handler if one was found, NULL otherwise.
  */
 const RTPDynamicProtocolHandler *ff_rtp_handler_find_by_id(int id,
-                                                enum AVMediaType codec_type);
+                                                enum AV_MediaType codec_type);
 
 /* from rtsp.c, but used by rtp dynamic protocol handlers. */
 int ff_rtsp_next_attr_and_value(const char **p, char *attr, int attr_size,

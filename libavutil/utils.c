@@ -73,7 +73,7 @@ const char *avutil_license(void)
     return &LICENSE_PREFIX FFMPEG_LICENSE[sizeof(LICENSE_PREFIX) - 1];
 }
 
-const char *av_get_media_type_string(enum AVMediaType media_type)
+const char *av_get_media_type_string(enum AV_MediaType media_type)
 {
     switch (media_type) {
     case AVMEDIA_TYPE_VIDEO:      return "video";

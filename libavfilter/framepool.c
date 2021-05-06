@@ -29,7 +29,7 @@
 
 struct FFFramePool {
 
-    enum AVMediaType type;
+    enum AV_MediaType type;
 
     /* video */
     int width;

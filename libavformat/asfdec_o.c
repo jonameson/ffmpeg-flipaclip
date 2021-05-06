@@ -726,7 +726,7 @@ static int asf_read_stream_properties(AVFormatContext *s, const GUIDParseTable *
     uint32_t err_data_len, ts_data_len; // type specific data length
     uint16_t flags;
     ff_asf_guid stream_type;
-    enum AVMediaType type;
+    enum AV_MediaType type;
     int i, ret;
     uint8_t stream_index;
     AVStream *st;

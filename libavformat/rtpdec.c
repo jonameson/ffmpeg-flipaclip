@@ -147,7 +147,7 @@ const RTPDynamicProtocolHandler *ff_rtp_handler_iterate(void **opaque)
 }
 
 const RTPDynamicProtocolHandler *ff_rtp_handler_find_by_name(const char *name,
-                                                       enum AVMediaType codec_type)
+                                                       enum AV_MediaType codec_type)
 {
     void *i = 0;
     const RTPDynamicProtocolHandler *handler;
@@ -161,7 +161,7 @@ const RTPDynamicProtocolHandler *ff_rtp_handler_find_by_name(const char *name,
 }
 
 const RTPDynamicProtocolHandler *ff_rtp_handler_find_by_id(int id,
-                                                     enum AVMediaType codec_type)
+                                                     enum AV_MediaType codec_type)
 {
     void *i = 0;
     const RTPDynamicProtocolHandler *handler;

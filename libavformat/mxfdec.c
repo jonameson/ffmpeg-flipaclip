@@ -2662,7 +2662,7 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
             }
             st->codecpar->bits_per_coded_sample = av_get_bits_per_sample(st->codecpar->codec_id);
         } else if (st->codecpar->codec_type == AVMEDIA_TYPE_DATA) {
-            enum AVMediaType type;
+            enum AV_MediaType type;
             container_ul = mxf_get_codec_ul(mxf_data_essence_container_uls, essence_container_ul);
             if (st->codecpar->codec_id == AV_CODEC_ID_NONE)
                 st->codecpar->codec_id = container_ul->id;

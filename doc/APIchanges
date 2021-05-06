@@ -3066,7 +3066,7 @@ lavd 54.4.100 / 54.0.0, lavfi 3.5.0
   int avfilter_add_format    (AVFilterFormats **avff, int fmt);
 
   AVFilterFormats *avfilter_all_colorspaces(void); ->
-  AVFilterFormats *avfilter_all_formats    (enum AVMediaType type);
+  AVFilterFormats *avfilter_all_formats    (enum AV_MediaType type);
 
   This change breaks libavfilter API/ABI.
 
@@ -3170,11 +3170,11 @@ lavd 54.4.100 / 54.0.0, lavfi 3.5.0
 2010-03-31 - 1a70d12 - lavf 52.60.0 - av_match_ext()
   Make av_match_ext() public.
 
-2010-03-31 - 1149150 - lavu 50.14.0 - AVMediaType
-  Move AVMediaType enum from libavcodec to libavutil.
+2010-03-31 - 1149150 - lavu 50.14.0 - AV_MediaType
+  Move AV_MediaType enum from libavcodec to libavutil.
 
-2010-03-31 - 72415b2 - lavc 52.64.0 - AVMediaType
-  Define AVMediaType enum, and use it instead of enum CodecType, which
+2010-03-31 - 72415b2 - lavc 52.64.0 - AV_MediaType
+  Define AV_MediaType enum, and use it instead of enum CodecType, which
   is deprecated and will be dropped at the next major bump.
 
 2010-03-25 - 8795823 - lavu 50.13.0 - av_strerror()

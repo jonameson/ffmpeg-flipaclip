@@ -101,7 +101,7 @@ static AVStream *find_stream(void *log, AVFormatContext *avf, const char *spec)
     int i, ret, already = 0, stream_id = -1;
     char type_char[2], dummy;
     AVStream *found = NULL;
-    enum AVMediaType type;
+    enum AV_MediaType type;
 
     ret = sscanf(spec, "d%1[av]%d%c", type_char, &stream_id, &dummy);
     if (ret >= 1 && ret <= 2) {
@@ -404,7 +404,7 @@ static int movie_config_output_props(AVFilterLink *outlink)
 }
 
 static char *describe_frame_to_str(char *dst, size_t dst_size,
-                                   AVFrame *frame, enum AVMediaType frame_type,
+                                   AVFrame *frame, enum AV_MediaType frame_type,
                                    AVFilterLink *link)
 {
     switch (frame_type) {
