@@ -19,6 +19,7 @@
 *.swp
 *.ver
 *.DS_Store
+*.version
 *_g
 \#*
 .\#*
