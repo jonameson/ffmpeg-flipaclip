@@ -73,8 +73,8 @@ struct AVFormatInternal {
      * not decoded, for example to get the codec parameters in MPEG
      * streams.
      */
-    struct AVPacketList *packet_buffer;
-    struct AVPacketList *packet_buffer_end;
+    struct PacketList *packet_buffer;
+    struct PacketList *packet_buffer_end;
 
     /* av_seek_frame() support */
     int64_t data_offset; /**< offset of the first packet */
@@ -85,13 +85,19 @@ struct AVFormatInternal {
      * be identified, as parsing cannot be done without knowing the
      * codec.
      */
-    struct AVPacketList *raw_packet_buffer;
-    struct AVPacketList *raw_packet_buffer_end;
+    struct PacketList *raw_packet_buffer;
+    struct PacketList *raw_packet_buffer_end;
     /**
      * Packets split by the parser get queued here.
      */
-    struct AVPacketList *parse_queue;
-    struct AVPacketList *parse_queue_end;
+    AVPacket *parse_pkt;
+    struct PacketList *parse_queue;
+    struct PacketList *parse_queue_end;
+
+    /**
+     * Used to hold temporary packets.
+     */
+    AVPacket *pkt;
     /**
      * Remaining size available for raw_packet_buffer, in bytes.
      */
@@ -142,6 +148,11 @@ struct AVFormatInternal {
      * Prefer the codec framerate for avg_frame_rate computation.
      */
     int prefer_codec_framerate;
+
+    /**
+     * Set if chapter ids are strictly monotonic.
+     */
+    int chapter_ids_monotonic;
 };
 
 struct AVStreamInternal {
@@ -224,11 +235,6 @@ struct AVStreamInternal {
         int     fps_last_dts_idx;
 
     } *info;
-
-    AVIndexEntry *index_entries; /**< Only used if the format does not
-                                    support seeking natively. */
-    int nb_index_entries;
-    unsigned int index_entries_allocated_size;
 
     int64_t interleaver_chunk_size;
     int64_t interleaver_chunk_duration;
@@ -342,7 +348,7 @@ struct AVStreamInternal {
     /**
      * last packet in packet_buffer for this stream when muxing.
      */
-    struct AVPacketList *last_in_packet_buffer;
+    struct PacketList *last_in_packet_buffer;
 };
 
 #ifdef __GNUC__
@@ -359,8 +365,6 @@ do {\
     av_dynarray_add((tab), nb_ptr, (elem));\
 } while(0)
 #endif
-
-struct tm *ff_brktimegm(time_t secs, struct tm *tm);
 
 /**
  * Automatically create sub-directories
@@ -551,7 +555,11 @@ void ff_configure_buffers_for_index(AVFormatContext *s, int64_t time_tolerance);
  *
  * @return AVChapter or NULL on error
  */
+#if FF_API_CHAPTER_ID_INT
 AVChapter *avpriv_new_chapter(AVFormatContext *s, int id, AVRational time_base,
+#else
+AVChapter *avpriv_new_chapter(AVFormatContext *s, int64_t id, AVRational time_base,
+#endif
                               int64_t start, int64_t end, const char *title);
 
 /**
@@ -862,15 +870,12 @@ int ff_bprint_to_codecpar_extradata(AVCodecParameters *par, struct AVBPrint *buf
 
 /**
  * Find the next packet in the interleaving queue for the given stream.
- * The pkt parameter is filled in with the queued packet, including
- * references to the data (which the caller is not allowed to keep or
- * modify).
  *
- * @return 0 if a packet was found, a negative value if no packet was found
+ * @return a pointer to a packet if one was found, NULL otherwise.
  */
-int ff_interleaved_peek(AVFormatContext *s, int stream,
-                        AVPacket *pkt, int add_offset);
+const AVPacket *ff_interleaved_peek(AVFormatContext *s, int stream);
 
+int ff_get_muxer_ts_offset(AVFormatContext *s, int stream_index, int64_t *offset);
 
 int ff_lock_avformat(void);
 int ff_unlock_avformat(void);

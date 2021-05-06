@@ -167,11 +167,11 @@ static int filter_frame(AVFilterLink *inlink, AVFrame *in)
     dm->got_frame[INPUT_MAIN] = dm->got_frame[INPUT_CLEANSRC] = 0;
 
     if (dm->ppsrc)
-        in = dm->clean_src[dm->fid];
+        in = dm->queue[dm->fid].frame;
 
     if (in) {
         /* update frame metrics */
-        prv = dm->fid ? (dm->ppsrc ? dm->clean_src[dm->fid - 1] : dm->queue[dm->fid - 1].frame) : dm->last;
+        prv = dm->fid ? dm->queue[dm->fid - 1].frame : dm->last;
         if (!prv) {
             dm->queue[dm->fid].maxbdiff = INT64_MAX;
             dm->queue[dm->fid].totdiff  = INT64_MAX;
@@ -219,8 +219,6 @@ static int filter_frame(AVFilterLink *inlink, AVFrame *in)
             av_frame_free(&dm->queue[i].frame);
         } else {
             AVFrame *frame = dm->queue[i].frame;
-            if (!frame)
-                continue;
             dm->queue[i].frame = NULL;
             if (frame->pts != AV_NOPTS_VALUE && dm->start_pts == AV_NOPTS_VALUE)
                 dm->start_pts = frame->pts;
@@ -269,19 +267,25 @@ static int activate(AVFilterContext *ctx)
     }
     if (ret < 0) {
         return ret;
-    } else if (dm->eof & ((1 << INPUT_MAIN) | (dm->ppsrc << INPUT_CLEANSRC))) {
+    } else if (dm->eof == ((1 << INPUT_MAIN) | (dm->ppsrc << INPUT_CLEANSRC))) {
         ff_outlink_set_status(ctx->outputs[0], AVERROR_EOF, dm->last_pts);
         return 0;
     } else if (!(dm->eof & (1 << INPUT_MAIN)) && ff_inlink_acknowledge_status(ctx->inputs[INPUT_MAIN], &status, &pts)) {
         if (status == AVERROR_EOF) { // flushing
             dm->eof |= 1 << INPUT_MAIN;
-            if (!dm->ppsrc)
-                return filter_frame(ctx->inputs[INPUT_MAIN], NULL);
+            if (dm->ppsrc)
+                filter_frame(ctx->inputs[INPUT_CLEANSRC], NULL);
+            filter_frame(ctx->inputs[INPUT_MAIN], NULL);
+            ff_outlink_set_status(ctx->outputs[0], AVERROR_EOF, dm->last_pts);
+            return 0;
         }
     } else if (dm->ppsrc && !(dm->eof & (1 << INPUT_CLEANSRC)) && ff_inlink_acknowledge_status(ctx->inputs[INPUT_CLEANSRC], &status, &pts)) {
         if (status == AVERROR_EOF) { // flushing
             dm->eof |= 1 << INPUT_CLEANSRC;
-            return filter_frame(ctx->inputs[INPUT_CLEANSRC], NULL);
+            filter_frame(ctx->inputs[INPUT_MAIN], NULL);
+            filter_frame(ctx->inputs[INPUT_CLEANSRC], NULL);
+            ff_outlink_set_status(ctx->outputs[0], AVERROR_EOF, dm->last_pts);
+            return 0;
         }
     }
 
@@ -353,8 +357,12 @@ static int query_formats(AVFilterContext *ctx)
 #define PF_ALPHA(suf)   AV_PIX_FMT_YUVA420##suf, AV_PIX_FMT_YUVA422##suf, AV_PIX_FMT_YUVA444##suf
 #define PF(suf)         PF_NOALPHA(suf), PF_ALPHA(suf)
         PF(P), PF(P9), PF(P10), PF_NOALPHA(P12), PF_NOALPHA(P14), PF(P16),
+        AV_PIX_FMT_YUV440P10, AV_PIX_FMT_YUV440P12,
         AV_PIX_FMT_YUV440P, AV_PIX_FMT_YUV411P, AV_PIX_FMT_YUV410P,
-        AV_PIX_FMT_GRAY8, AV_PIX_FMT_GRAY16,
+        AV_PIX_FMT_YUVJ444P, AV_PIX_FMT_YUVJ440P, AV_PIX_FMT_YUVJ422P, AV_PIX_FMT_YUVJ420P,
+        AV_PIX_FMT_YUVJ411P,
+        AV_PIX_FMT_GRAY8, AV_PIX_FMT_GRAY9, AV_PIX_FMT_GRAY10, AV_PIX_FMT_GRAY12, AV_PIX_FMT_GRAY14,
+        AV_PIX_FMT_GRAY16,
         AV_PIX_FMT_NONE
     };
     AVFilterFormats *fmts_list = ff_make_format_list(pix_fmts);
@@ -367,8 +375,7 @@ static int config_output(AVFilterLink *outlink)
 {
     AVFilterContext *ctx = outlink->src;
     DecimateContext *dm = ctx->priv;
-    const AVFilterLink *inlink =
-        ctx->inputs[dm->ppsrc ? INPUT_CLEANSRC : INPUT_MAIN];
+    const AVFilterLink *inlink = ctx->inputs[INPUT_MAIN];
     AVRational fps = inlink->frame_rate;
     int max_value;
     const AVPixFmtDescriptor *pix_desc = av_pix_fmt_desc_get(inlink->format);
@@ -407,8 +414,13 @@ static int config_output(AVFilterLink *outlink)
     outlink->time_base  = inlink->time_base;
     outlink->frame_rate = fps;
     outlink->sample_aspect_ratio = inlink->sample_aspect_ratio;
-    outlink->w = inlink->w;
-    outlink->h = inlink->h;
+    if (dm->ppsrc) {
+        outlink->w = ctx->inputs[INPUT_CLEANSRC]->w;
+        outlink->h = ctx->inputs[INPUT_CLEANSRC]->h;
+    } else {
+        outlink->w = inlink->w;
+        outlink->h = inlink->h;
+    }
     dm->ts_unit = av_inv_q(av_mul_q(fps, outlink->time_base));
     return 0;
 }

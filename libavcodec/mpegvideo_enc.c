@@ -36,8 +36,10 @@
 #include "libavutil/internal.h"
 #include "libavutil/intmath.h"
 #include "libavutil/mathematics.h"
+#include "libavutil/mem_internal.h"
 #include "libavutil/pixdesc.h"
 #include "libavutil/opt.h"
+#include "libavutil/thread.h"
 #include "avcodec.h"
 #include "dct.h"
 #include "idctdsp.h"
@@ -65,7 +67,6 @@
 #include "wmv2.h"
 #include "rv10.h"
 #include "packet_internal.h"
-#include "libxvid.h"
 #include <limits.h>
 #include "sp5x.h"
 
@@ -248,18 +249,24 @@ static void update_duplicate_context_after_me(MpegEncContext *dst,
 #undef COPY
 }
 
+static void mpv_encode_init_static(void)
+{
+   for (int i = -16; i < 16; i++)
+        default_fcode_tab[i + MAX_MV] = 1;
+}
+
 /**
  * Set the given MpegEncContext to defaults for encoding.
  * the changed fields will not depend upon the prior state of the MpegEncContext.
  */
 static void mpv_encode_defaults(MpegEncContext *s)
 {
-    int i;
+    static AVOnce init_static_once = AV_ONCE_INIT;
+
     ff_mpv_common_defaults(s);
 
-    for (i = -16; i < 16; i++) {
-        default_fcode_tab[i + MAX_MV] = 1;
-    }
+    ff_thread_once(&init_static_once, mpv_encode_init_static);
+
     s->me.mv_penalty = default_mv_penalty;
     s->fcode_tab     = default_fcode_tab;
 
@@ -620,7 +627,7 @@ FF_ENABLE_DEPRECATION_WARNINGS
 #if FF_API_PRIVATE_OPT
     FF_DISABLE_DEPRECATION_WARNINGS
     if (avctx->mpeg_quant)
-        s->mpeg_quant = avctx->mpeg_quant;
+        s->mpeg_quant = 1;
     FF_ENABLE_DEPRECATION_WARNINGS
 #endif
 
@@ -1001,8 +1008,7 @@ FF_ENABLE_DEPRECATION_WARNINGS
     if (CONFIG_H263_ENCODER && s->out_format == FMT_H263)
         ff_h263_encode_init(s);
     if (CONFIG_MSMPEG4_ENCODER && s->msmpeg4_version)
-        if ((ret = ff_msmpeg4_encode_init(s)) < 0)
-            return ret;
+        ff_msmpeg4_encode_init(s);
     if ((CONFIG_MPEG1VIDEO_ENCODER || CONFIG_MPEG2VIDEO_ENCODER)
         && s->out_format == FMT_MPEG1)
         ff_mpeg1_encode_init(s);
@@ -1358,23 +1364,20 @@ static int skip_check(MpegEncContext *s, Picture *p, Picture *ref)
     return 0;
 }
 
-static int encode_frame(AVCodecContext *c, AVFrame *frame)
+static int encode_frame(AVCodecContext *c, AVFrame *frame, AVPacket *pkt)
 {
-    AVPacket pkt = { 0 };
     int ret;
     int size = 0;
-
-    av_init_packet(&pkt);
 
     ret = avcodec_send_frame(c, frame);
     if (ret < 0)
         return ret;
 
     do {
-        ret = avcodec_receive_packet(c, &pkt);
+        ret = avcodec_receive_packet(c, pkt);
         if (ret >= 0) {
-            size += pkt.size;
-            av_packet_unref(&pkt);
+            size += pkt->size;
+            av_packet_unref(pkt);
         } else if (ret < 0 && ret != AVERROR(EAGAIN) && ret != AVERROR_EOF)
             return ret;
     } while (ret >= 0);
@@ -1385,6 +1388,7 @@ static int encode_frame(AVCodecContext *c, AVFrame *frame)
 static int estimate_best_b_count(MpegEncContext *s)
 {
     const AVCodec *codec = avcodec_find_encoder(s->avctx->codec_id);
+    AVPacket *pkt;
     const int scale = s->brd_scale;
     int width  = s->width  >> scale;
     int height = s->height >> scale;
@@ -1394,6 +1398,10 @@ static int estimate_best_b_count(MpegEncContext *s)
     int ret = 0;
 
     av_assert0(scale >= 0 && scale <= 3);
+
+    pkt = av_packet_alloc();
+    if (!pkt)
+        return AVERROR(ENOMEM);
 
     //emms_c();
     //s->next_picture_ptr->quality;
@@ -1446,8 +1454,10 @@ static int estimate_best_b_count(MpegEncContext *s)
             break;
 
         c = avcodec_alloc_context3(NULL);
-        if (!c)
-            return AVERROR(ENOMEM);
+        if (!c) {
+            ret = AVERROR(ENOMEM);
+            goto fail;
+        }
 
         c->width        = width;
         c->height       = height;
@@ -1465,10 +1475,11 @@ static int estimate_best_b_count(MpegEncContext *s)
         if (ret < 0)
             goto fail;
 
+
         s->tmp_frames[0]->pict_type = AV_PICTURE_TYPE_I;
         s->tmp_frames[0]->quality   = 1 * FF_QP2LAMBDA;
 
-        out_size = encode_frame(c, s->tmp_frames[0]);
+        out_size = encode_frame(c, s->tmp_frames[0], pkt);
         if (out_size < 0) {
             ret = out_size;
             goto fail;
@@ -1483,7 +1494,7 @@ static int estimate_best_b_count(MpegEncContext *s)
                                      AV_PICTURE_TYPE_P : AV_PICTURE_TYPE_B;
             s->tmp_frames[i + 1]->quality   = is_p ? p_lambda : b_lambda;
 
-            out_size = encode_frame(c, s->tmp_frames[i + 1]);
+            out_size = encode_frame(c, s->tmp_frames[i + 1], pkt);
             if (out_size < 0) {
                 ret = out_size;
                 goto fail;
@@ -1493,7 +1504,7 @@ static int estimate_best_b_count(MpegEncContext *s)
         }
 
         /* get the delayed frames */
-        out_size = encode_frame(c, NULL);
+        out_size = encode_frame(c, NULL, pkt);
         if (out_size < 0) {
             ret = out_size;
             goto fail;
@@ -1509,9 +1520,14 @@ static int estimate_best_b_count(MpegEncContext *s)
 
 fail:
         avcodec_free_context(&c);
-        if (ret < 0)
-            return ret;
+        av_packet_unref(pkt);
+        if (ret < 0) {
+            best_b_count = ret;
+            break;
+        }
     }
+
+    av_packet_free(&pkt);
 
     return best_b_count;
 }
@@ -1679,7 +1695,8 @@ no_output_pic:
             // input is not a shared pix -> reuse buffer for current_pix
             s->current_picture_ptr = s->reordered_input_picture[0];
             for (i = 0; i < 4; i++) {
-                s->new_picture.f->data[i] += INPLACE_OFFSET;
+                if (s->new_picture.f->data[i])
+                    s->new_picture.f->data[i] += INPLACE_OFFSET;
             }
         }
         ff_mpeg_unref_picture(s->avctx, &s->current_picture);
@@ -2785,8 +2802,6 @@ static int pre_estimate_motion_thread(AVCodecContext *c, void *arg){
 static int estimate_motion_thread(AVCodecContext *c, void *arg){
     MpegEncContext *s= *(void**)arg;
 
-    ff_check_alignment();
-
     s->me.dia_size= s->avctx->dia_size;
     s->first_slice_line=1;
     for(s->mb_y= s->start_mb_y; s->mb_y < s->end_mb_y; s->mb_y++) {
@@ -2812,8 +2827,6 @@ static int estimate_motion_thread(AVCodecContext *c, void *arg){
 static int mb_var_thread(AVCodecContext *c, void *arg){
     MpegEncContext *s= *(void**)arg;
     int mb_x, mb_y;
-
-    ff_check_alignment();
 
     for(mb_y=s->start_mb_y; mb_y < s->end_mb_y; mb_y++) {
         for(mb_x=0; mb_x < s->mb_width; mb_x++) {
@@ -2942,8 +2955,6 @@ static int encode_thread(AVCodecContext *c, void *arg){
     uint8_t bit_buf2[2][MAX_MB_BYTES];
     uint8_t bit_buf_tex[2][MAX_MB_BYTES];
     PutBitContext pb[2], pb2[2], tex_pb[2];
-
-    ff_check_alignment();
 
     for(i=0; i<2; i++){
         init_put_bits(&pb    [i], bit_buf    [i], MAX_MB_BYTES);
@@ -3879,8 +3890,8 @@ static int encode_picture(MpegEncContext *s, int picture_number)
         for(i=1;i<64;i++){
             int j= s->idsp.idct_permutation[ff_zigzag_direct[i]];
 
-            s->intra_matrix[j] = sp5x_quant_table[5*2+0][i];
-            s->chroma_intra_matrix[j] = sp5x_quant_table[5*2+1][i];
+            s->intra_matrix[j]        = sp5x_qscale_five_quant_table[0][i];
+            s->chroma_intra_matrix[j] = sp5x_qscale_five_quant_table[1][i];
         }
         s->y_dc_scale_table= y;
         s->c_dc_scale_table= c;

@@ -127,7 +127,11 @@ static void mpc8_get_chunk_header(AVIOContext *pb, int *tag, int64_t *size)
     pos = avio_tell(pb);
     *tag = avio_rl16(pb);
     *size = ffio_read_varlen(pb);
-    *size -= avio_tell(pb) - pos;
+    pos -= avio_tell(pb);
+    if (av_sat_add64(*size, pos) != (uint64_t)*size + pos) {
+        *size = -1;
+    } else
+        *size += pos;
 }
 
 static void mpc8_parse_seektable(AVFormatContext *s, int64_t off)
@@ -292,7 +296,7 @@ static int mpc8_read_packet(AVFormatContext *s, AVPacket *pkt)
             return AVERROR_EOF;
 
         mpc8_get_chunk_header(s->pb, &tag, &size);
-        if (size < 0)
+        if (size < 0 || size > INT_MAX)
             return -1;
         if(tag == TAG_AUDIOPACKET){
             if ((ret = av_get_packet(s->pb, pkt, size)) < 0)
@@ -314,9 +318,9 @@ static int mpc8_read_seek(AVFormatContext *s, int stream_index, int64_t timestam
     int index = av_index_search_timestamp(st, timestamp, flags);
 
     if(index < 0) return -1;
-    if (avio_seek(s->pb, st->internal->index_entries[index].pos, SEEK_SET) < 0)
+    if (avio_seek(s->pb, st->index_entries[index].pos, SEEK_SET) < 0)
         return -1;
-    ff_update_cur_dts(s, st, st->internal->index_entries[index].timestamp);
+    ff_update_cur_dts(s, st, st->index_entries[index].timestamp);
     return 0;
 }
 

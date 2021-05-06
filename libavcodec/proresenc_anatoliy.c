@@ -27,6 +27,7 @@
  * Known FOURCCs: 'ap4h' (444), 'apch' (HQ), 'apcn' (422), 'apcs' (LT), 'acpo' (Proxy)
  */
 
+#include "libavutil/mem_internal.h"
 #include "libavutil/opt.h"
 #include "avcodec.h"
 #include "dct.h"
@@ -956,6 +957,7 @@ AVCodec ff_prores_aw_encoder = {
     .capabilities   = AV_CODEC_CAP_FRAME_THREADS,
     .priv_class     = &proresaw_enc_class,
     .profiles       = NULL_IF_CONFIG_SMALL(ff_prores_profiles),
+    .caps_internal  = FF_CODEC_CAP_INIT_CLEANUP,
 };
 
 AVCodec ff_prores_encoder = {
@@ -971,4 +973,5 @@ AVCodec ff_prores_encoder = {
     .capabilities   = AV_CODEC_CAP_FRAME_THREADS,
     .priv_class     = &prores_enc_class,
     .profiles       = NULL_IF_CONFIG_SMALL(ff_prores_profiles),
+    .caps_internal  = FF_CODEC_CAP_INIT_CLEANUP,
 };

@@ -21,13 +21,14 @@
 #include "dnn_io_proc.h"
 #include "libavutil/imgutils.h"
 #include "libswscale/swscale.h"
+#include "libavutil/avassert.h"
 
-DNNReturnType proc_from_dnn_to_frame(AVFrame *frame, DNNData *output, void *log_ctx)
+DNNReturnType ff_proc_from_dnn_to_frame(AVFrame *frame, DNNData *output, void *log_ctx)
 {
     struct SwsContext *sws_ctx;
     int bytewidth = av_image_get_linesize(frame->format, frame->width, 0);
     if (output->dt != DNN_FLOAT) {
-        av_log(log_ctx, AV_LOG_ERROR, "do not support data type rather than DNN_FLOAT\n");
+        avpriv_report_missing_feature(log_ctx, "data type rather than DNN_FLOAT");
         return DNN_ERROR;
     }
 
@@ -85,20 +86,19 @@ DNNReturnType proc_from_dnn_to_frame(AVFrame *frame, DNNData *output, void *log_
         sws_freeContext(sws_ctx);
         return DNN_SUCCESS;
     default:
-        av_log(log_ctx, AV_LOG_ERROR, "do not support frame format %s\n",
-               av_get_pix_fmt_name(frame->format));
+        avpriv_report_missing_feature(log_ctx, "%s", av_get_pix_fmt_name(frame->format));
         return DNN_ERROR;
     }
 
     return DNN_SUCCESS;
 }
 
-DNNReturnType proc_from_frame_to_dnn(AVFrame *frame, DNNData *input, void *log_ctx)
+static DNNReturnType proc_from_frame_to_dnn_frameprocessing(AVFrame *frame, DNNData *input, void *log_ctx)
 {
     struct SwsContext *sws_ctx;
     int bytewidth = av_image_get_linesize(frame->format, frame->width, 0);
     if (input->dt != DNN_FLOAT) {
-        av_log(log_ctx, AV_LOG_ERROR, "do not support data type rather than DNN_FLOAT\n");
+        avpriv_report_missing_feature(log_ctx, "data type rather than DNN_FLOAT");
         return DNN_ERROR;
     }
 
@@ -158,10 +158,62 @@ DNNReturnType proc_from_frame_to_dnn(AVFrame *frame, DNNData *input, void *log_c
         sws_freeContext(sws_ctx);
         break;
     default:
-        av_log(log_ctx, AV_LOG_ERROR, "do not support frame format %s\n",
-               av_get_pix_fmt_name(frame->format));
+        avpriv_report_missing_feature(log_ctx, "%s", av_get_pix_fmt_name(frame->format));
         return DNN_ERROR;
     }
 
     return DNN_SUCCESS;
+}
+
+static enum AVPixelFormat get_pixel_format(DNNData *data)
+{
+    if (data->dt == DNN_UINT8 && data->order == DCO_BGR) {
+        return AV_PIX_FMT_BGR24;
+    }
+
+    av_assert0(!"not supported yet.\n");
+    return AV_PIX_FMT_BGR24;
+}
+
+static DNNReturnType proc_from_frame_to_dnn_analytics(AVFrame *frame, DNNData *input, void *log_ctx)
+{
+    struct SwsContext *sws_ctx;
+    int linesizes[4];
+    enum AVPixelFormat fmt = get_pixel_format(input);
+    sws_ctx = sws_getContext(frame->width, frame->height, frame->format,
+                             input->width, input->height, fmt,
+                             SWS_FAST_BILINEAR, NULL, NULL, NULL);
+    if (!sws_ctx) {
+        av_log(log_ctx, AV_LOG_ERROR, "Impossible to create scale context for the conversion "
+            "fmt:%s s:%dx%d -> fmt:%s s:%dx%d\n",
+            av_get_pix_fmt_name(frame->format), frame->width, frame->height,
+            av_get_pix_fmt_name(fmt), input->width, input->height);
+        return DNN_ERROR;
+    }
+
+    if (av_image_fill_linesizes(linesizes, fmt, input->width) < 0) {
+        av_log(log_ctx, AV_LOG_ERROR, "unable to get linesizes with av_image_fill_linesizes");
+        sws_freeContext(sws_ctx);
+        return DNN_ERROR;
+    }
+
+    sws_scale(sws_ctx, (const uint8_t *const *)frame->data, frame->linesize, 0, frame->height,
+                       (uint8_t *const *)(&input->data), linesizes);
+
+    sws_freeContext(sws_ctx);
+    return DNN_SUCCESS;
+}
+
+DNNReturnType ff_proc_from_frame_to_dnn(AVFrame *frame, DNNData *input, DNNFunctionType func_type, void *log_ctx)
+{
+    switch (func_type)
+    {
+    case DFT_PROCESS_FRAME:
+        return proc_from_frame_to_dnn_frameprocessing(frame, input, log_ctx);
+    case DFT_ANALYTICS_DETECT:
+        return proc_from_frame_to_dnn_analytics(frame, input, log_ctx);
+    default:
+        avpriv_report_missing_feature(log_ctx, "model function type %d", func_type);
+        return DNN_ERROR;
+    }
 }

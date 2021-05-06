@@ -381,9 +381,10 @@ int ff_img_read_header(AVFormatContext *s1)
  * as a dictionary, so it can be used by filters like 'drawtext'.
  */
 static int add_filename_as_pkt_side_data(char *filename, AVPacket *pkt) {
-    int metadata_len, ret;
     AVDictionary *d = NULL;
     char *packed_metadata = NULL;
+    buffer_size_t metadata_len;
+    int ret;
 
     av_dict_set(&d, "lavf.image2dec.source_path", filename, 0);
     av_dict_set(&d, "lavf.image2dec.source_basename", av_basename(filename), 0);
@@ -589,7 +590,7 @@ static int img_read_seek(AVFormatContext *s, int stream_index, int64_t timestamp
         int index = av_index_search_timestamp(st, timestamp, flags);
         if(index < 0)
             return -1;
-        s1->img_number = st->internal->index_entries[index].pos;
+        s1->img_number = st->index_entries[index].pos;
         return 0;
     }
 
@@ -993,7 +994,7 @@ static inline int pnm_probe(const AVProbeData *p)
 
 static int pbm_probe(const AVProbeData *p)
 {
-    return pnm_magic_check(p, 1) || pnm_magic_check(p, 4) ? pnm_probe(p) : 0;
+    return pnm_magic_check(p, 1) || pnm_magic_check(p, 4) || pnm_magic_check(p, 22) || pnm_magic_check(p, 54) ? pnm_probe(p) : 0;
 }
 
 static inline int pgmx_probe(const AVProbeData *p)
@@ -1029,6 +1030,16 @@ static int ppm_probe(const AVProbeData *p)
 static int pam_probe(const AVProbeData *p)
 {
     return pnm_magic_check(p, 7) ? pnm_probe(p) : 0;
+}
+
+static int xbm_probe(const AVProbeData *p)
+{
+    if (!memcmp(p->buf, "/* XBM X10 format */", 20))
+        return AVPROBE_SCORE_MAX;
+
+    if (!memcmp(p->buf, "#define", 7))
+        return AVPROBE_SCORE_MAX - 1;
+    return 0;
 }
 
 static int xpm_probe(const AVProbeData *p)
@@ -1139,5 +1150,6 @@ IMAGEAUTO_DEMUXER(sunrast, AV_CODEC_ID_SUNRAST)
 IMAGEAUTO_DEMUXER(svg,     AV_CODEC_ID_SVG)
 IMAGEAUTO_DEMUXER(tiff,    AV_CODEC_ID_TIFF)
 IMAGEAUTO_DEMUXER(webp,    AV_CODEC_ID_WEBP)
+IMAGEAUTO_DEMUXER(xbm,     AV_CODEC_ID_XBM)
 IMAGEAUTO_DEMUXER(xpm,     AV_CODEC_ID_XPM)
 IMAGEAUTO_DEMUXER(xwd,     AV_CODEC_ID_XWD)

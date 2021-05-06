@@ -223,7 +223,7 @@ static int rm_read_audio_stream_info(AVFormatContext *s, AVIOContext *pb,
                 if (version == 5)
                     avio_r8(pb);
                 codecdata_length = avio_rb32(pb);
-                if(codecdata_length + AV_INPUT_BUFFER_PADDING_SIZE <= (unsigned)codecdata_length){
+                if((unsigned)codecdata_length > INT_MAX - AV_INPUT_BUFFER_PADDING_SIZE){
                     av_log(s, AV_LOG_ERROR, "codecdata_length too large\n");
                     return -1;
                 }
@@ -254,7 +254,7 @@ static int rm_read_audio_stream_info(AVFormatContext *s, AVIOContext *pb,
             if (version == 5)
                 avio_r8(pb);
             codecdata_length = avio_rb32(pb);
-            if(codecdata_length + AV_INPUT_BUFFER_PADDING_SIZE <= (unsigned)codecdata_length){
+            if((unsigned)codecdata_length > INT_MAX - AV_INPUT_BUFFER_PADDING_SIZE){
                 av_log(s, AV_LOG_ERROR, "codecdata_length too large\n");
                 return -1;
             }
@@ -296,7 +296,7 @@ static int rm_read_audio_stream_info(AVFormatContext *s, AVIOContext *pb,
             ast->deint_id == DEINT_ID_GENR ||
             ast->deint_id == DEINT_ID_SIPR) {
             if (st->codecpar->block_align <= 0 ||
-                ast->audio_framesize * sub_packet_h > (unsigned)INT_MAX ||
+                ast->audio_framesize * (uint64_t)sub_packet_h > (unsigned)INT_MAX ||
                 ast->audio_framesize * sub_packet_h < st->codecpar->block_align)
                 return AVERROR_INVALIDDATA;
             if (av_new_packet(&ast->pkt, ast->audio_framesize * sub_packet_h) < 0)
@@ -614,8 +614,10 @@ static int rm_read_header(AVFormatContext *s)
             get_str8(pb, mime, sizeof(mime)); /* mimetype */
             st->codecpar->codec_type = AVMEDIA_TYPE_DATA;
             st->priv_data = ff_rm_alloc_rmstream();
-            if (!st->priv_data)
-                return AVERROR(ENOMEM);
+            if (!st->priv_data) {
+                ret = AVERROR(ENOMEM);
+                goto fail;
+            }
 
             size = avio_rb32(pb);
             codec_pos = avio_tell(pb);
@@ -719,9 +721,9 @@ static int rm_sync(AVFormatContext *s, int64_t *timestamp, int *flags, int *stre
                     av_log(s, AV_LOG_WARNING,
                            "Index size %d (%d pkts) is wrong, should be %"PRId64".\n",
                            len, n_pkts, expected_len);
-                len -= 14; // we already read part of the index header
-                if(len<0)
+                if(len < 14)
                     continue;
+                len -= 14; // we already read part of the index header
                 goto skip;
             } else if (state == MKBETAG('D','A','T','A')) {
                 av_log(s, AV_LOG_WARNING,
@@ -1249,20 +1251,19 @@ static int ivr_read_header(AVFormatContext *s)
     }
 
     for (n = 0; n < nb_streams; n++) {
-        st = avformat_new_stream(s, NULL);
-        if (!st)
-            return AVERROR(ENOMEM);
-        st->priv_data = ff_rm_alloc_rmstream();
-        if (!st->priv_data)
-            return AVERROR(ENOMEM);
+        if (!(st = avformat_new_stream(s, NULL)) ||
+            !(st->priv_data = ff_rm_alloc_rmstream())) {
+            ret = AVERROR(ENOMEM);
+            goto fail;
+        }
 
         if (avio_r8(pb) != 1)
-            return AVERROR_INVALIDDATA;
+            goto invalid_data;
 
         count = avio_rb32(pb);
         for (i = 0; i < count; i++) {
             if (avio_feof(pb))
-                return AVERROR_INVALIDDATA;
+                goto invalid_data;
 
             type = avio_r8(pb);
             tlen  = avio_rb32(pb);
@@ -1274,24 +1275,27 @@ static int ivr_read_header(AVFormatContext *s)
             } else if (type == 4 && !strncmp(key, "OpaqueData", tlen)) {
                 ret = ffio_ensure_seekback(pb, 4);
                 if (ret < 0)
-                    return ret;
+                    goto fail;
                 if (avio_rb32(pb) == MKBETAG('M', 'L', 'T', 'I')) {
                     ret = rm_read_multi(s, pb, st, NULL);
                 } else {
                     if (avio_feof(pb))
-                        return AVERROR_INVALIDDATA;
+                        goto invalid_data;
                     avio_seek(pb, -4, SEEK_CUR);
                     ret = ff_rm_read_mdpr_codecdata(s, pb, st, st->priv_data, len, NULL);
                 }
 
                 if (ret < 0)
-                    return ret;
+                    goto fail;
             } else if (type == 4) {
                 int j;
 
                 av_log(s, AV_LOG_DEBUG, "%s = '0x", key);
-                for (j = 0; j < len; j++)
+                for (j = 0; j < len; j++) {
+                    if (avio_feof(pb))
+                        goto invalid_data;
                     av_log(s, AV_LOG_DEBUG, "%X", avio_r8(pb));
+                }
                 av_log(s, AV_LOG_DEBUG, "'\n");
             } else if (len == 4 && type == 3 && !strncmp(key, "Duration", tlen)) {
                 st->duration = avio_rb32(pb);
@@ -1306,14 +1310,19 @@ static int ivr_read_header(AVFormatContext *s)
     }
 
     if (avio_r8(pb) != 6)
-        return AVERROR_INVALIDDATA;
+        goto invalid_data;
     avio_skip(pb, 12);
-    avio_skip(pb, avio_rb64(pb) + pos - avio_tell(s->pb));
+    avio_seek(pb, avio_rb64(pb) + pos, SEEK_SET);
     if (avio_r8(pb) != 8)
-        return AVERROR_INVALIDDATA;
+        goto invalid_data;
     avio_skip(pb, 8);
 
     return 0;
+invalid_data:
+    ret = AVERROR_INVALIDDATA;
+fail:
+    rm_read_close(s);
+    return ret;
 }
 
 static int ivr_read_packet(AVFormatContext *s, AVPacket *pkt)

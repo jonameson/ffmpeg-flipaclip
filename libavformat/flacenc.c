@@ -39,7 +39,7 @@ typedef struct FlacMuxerContext {
     int audio_stream_idx;
     int waiting_pics;
     /* audio packets are queued here until we get all the attached pictures */
-    AVPacketList *queue, *queue_end;
+    PacketList *queue, *queue_end;
 
     /* updated streaminfo sent by the encoder at the end */
     uint8_t streaminfo[FLAC_STREAMINFO_SIZE];
@@ -280,7 +280,7 @@ static int flac_write_audio_packet(struct AVFormatContext *s, AVPacket *pkt)
 {
     FlacMuxerContext *c = s->priv_data;
     uint8_t *streaminfo;
-    int streaminfo_size;
+    buffer_size_t streaminfo_size;
 
     /* check for updated streaminfo */
     streaminfo = av_packet_get_side_data(pkt, AV_PKT_DATA_NEW_EXTRADATA,

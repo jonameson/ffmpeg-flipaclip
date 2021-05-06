@@ -28,6 +28,7 @@
 
 #include "libavutil/buffer.h"
 #include "libavutil/channel_layout.h"
+#include "libavutil/fifo.h"
 #include "libavutil/mathematics.h"
 #include "libavutil/pixfmt.h"
 #include "avcodec.h"
@@ -73,6 +74,10 @@
  * uses ff_thread_report/await_progress().
  */
 #define FF_CODEC_CAP_ALLOCATE_PROGRESS      (1 << 6)
+/**
+ * Codec handles avctx->thread_count == 0 (auto) internally.
+ */
+#define FF_CODEC_CAP_AUTO_THREADS           (1 << 7)
 
 /**
  * AVCodec.codec_tags termination value
@@ -131,7 +136,9 @@ typedef struct AVCodecInternal {
      */
     int last_audio_frame;
 
+#if FF_API_OLD_ENCDEC
     AVFrame *to_free;
+#endif
 
     AVBufferRef *pool;
 
@@ -145,8 +152,7 @@ typedef struct AVCodecInternal {
      * for decoding.
      */
     AVPacket *last_pkt_props;
-    AVPacketList *pkt_props;
-    AVPacketList *pkt_props_tail;
+    AVFifoBuffer *pkt_props;
 
     /**
      * temporary buffer used for encoders to store their bitstream
@@ -179,6 +185,8 @@ typedef struct AVCodecInternal {
     AVPacket *buffer_pkt;
     AVFrame *buffer_frame;
     int draining_done;
+
+#if FF_API_OLD_ENCDEC
     int compat_decode_warned;
     /* this variable is set by the decoder internals to signal to the old
      * API compat wrappers the amount of data consumed from the last packet */
@@ -188,6 +196,7 @@ typedef struct AVCodecInternal {
     size_t compat_decode_partial_size;
     AVFrame *compat_decode_frame;
     AVPacket *compat_encode_packet;
+#endif
 
     int showed_multi_packet_warning;
 

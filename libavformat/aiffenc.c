@@ -37,7 +37,7 @@ typedef struct AIFFOutputContext {
     int64_t frames;
     int64_t ssnd;
     int audio_stream_idx;
-    AVPacketList *pict_list, *pict_list_end;
+    PacketList *pict_list, *pict_list_end;
     int write_id3v2;
     int id3v2_version;
 } AIFFOutputContext;
@@ -48,7 +48,7 @@ static int put_id3v2_tags(AVFormatContext *s, AIFFOutputContext *aiff)
     uint64_t pos, end, size;
     ID3v2EncContext id3v2 = { 0 };
     AVIOContext *pb = s->pb;
-    AVPacketList *pict_list = aiff->pict_list;
+    PacketList *pict_list = aiff->pict_list;
 
     if (!s->metadata && !s->nb_chapters && !aiff->pict_list)
         return 0;
@@ -305,6 +305,6 @@ AVOutputFormat ff_aiff_muxer = {
     .write_packet      = aiff_write_packet,
     .write_trailer     = aiff_write_trailer,
     .deinit            = aiff_deinit,
-    .codec_tag         = (const AVCodecTag* const []){ ff_codec_aiff_tags, 0 },
+    .codec_tag         = ff_aiff_codec_tags_list,
     .priv_class        = &aiff_muxer_class,
 };

@@ -95,6 +95,9 @@ static av_cold int libkvazaar_init(AVCodecContext *avctx)
     cfg->target_bitrate = avctx->bit_rate;
     cfg->vui.sar_width  = avctx->sample_aspect_ratio.num;
     cfg->vui.sar_height = avctx->sample_aspect_ratio.den;
+    if (avctx->bit_rate) {
+        cfg->rc_algorithm = KVZ_LAMBDA;
+    }
 
     if (ctx->kvz_params) {
         AVDictionary *dict = NULL;
@@ -327,7 +330,7 @@ AVCodec ff_libkvazaar_encoder = {
     .long_name        = NULL_IF_CONFIG_SMALL("libkvazaar H.265 / HEVC"),
     .type             = AVMEDIA_TYPE_VIDEO,
     .id               = AV_CODEC_ID_HEVC,
-    .capabilities     = AV_CODEC_CAP_DELAY | AV_CODEC_CAP_AUTO_THREADS,
+    .capabilities     = AV_CODEC_CAP_DELAY | AV_CODEC_CAP_OTHER_THREADS,
     .pix_fmts         = pix_fmts,
 
     .priv_class       = &class,
@@ -338,7 +341,8 @@ AVCodec ff_libkvazaar_encoder = {
     .encode2          = libkvazaar_encode,
     .close            = libkvazaar_close,
 
-    .caps_internal    = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
+    .caps_internal    = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP |
+                        FF_CODEC_CAP_AUTO_THREADS,
 
     .wrapper_name     = "libkvazaar",
 };

@@ -226,7 +226,7 @@ static int rv20_decode_picture_header(RVDecContext *rv)
             new_w = rv->orig_width;
             new_h = rv->orig_height;
         }
-        if (new_w != s->width || new_h != s->height) {
+        if (new_w != s->width || new_h != s->height || !s->context_initialized) {
             AVRational old_aspect = s->avctx->sample_aspect_ratio;
             av_log(s->avctx, AV_LOG_DEBUG,
                    "attempting to change resolution to %dx%d\n", new_w, new_h);
@@ -374,7 +374,6 @@ static av_cold int rv10_decode_init(AVCodecContext *avctx)
                                    avctx->coded_height, 0, avctx)) < 0)
         return ret;
 
-    ff_mpv_decode_defaults(s);
     ff_mpv_decode_init(s, avctx);
 
     s->out_format  = FMT_H263;
@@ -688,7 +687,6 @@ AVCodec ff_rv10_decoder = {
     .close          = rv10_decode_end,
     .decode         = rv10_decode_frame,
     .capabilities   = AV_CODEC_CAP_DR1,
-    .caps_internal  = FF_CODEC_CAP_INIT_CLEANUP,
     .max_lowres     = 3,
     .pix_fmts       = (const enum AVPixelFormat[]) {
         AV_PIX_FMT_YUV420P,
@@ -706,7 +704,6 @@ AVCodec ff_rv20_decoder = {
     .close          = rv10_decode_end,
     .decode         = rv10_decode_frame,
     .capabilities   = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_DELAY,
-    .caps_internal  = FF_CODEC_CAP_INIT_CLEANUP,
     .flush          = ff_mpeg_flush,
     .max_lowres     = 3,
     .pix_fmts       = (const enum AVPixelFormat[]) {

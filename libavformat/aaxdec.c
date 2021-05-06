@@ -232,7 +232,7 @@ static int aax_read_header(AVFormatContext *s)
         int64_t col_offset;
         int flag, type;
 
-        if (strcmp(a->xcolumns[c].name, "data"))
+        if (!a->xcolumns[c].name || strcmp(a->xcolumns[c].name, "data"))
             continue;
 
         type = a->xcolumns[c].type;
@@ -262,6 +262,11 @@ static int aax_read_header(AVFormatContext *s)
                 goto fail;
             }
         }
+    }
+
+    if (!a->segments[0].end) {
+        ret = AVERROR_INVALIDDATA;
+        goto fail;
     }
 
     st = avformat_new_stream(s, NULL);
