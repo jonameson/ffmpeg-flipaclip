@@ -20,6 +20,7 @@
 *.ver
 *.DS_Store
 *.version
+*-e
 *_g
 \#*
 .\#*
