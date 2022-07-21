@@ -129,7 +129,7 @@ static int write_frame(struct AVFormatContext *s, int stream_index,
 {
     AVBPrint bp;
     int ret = 0;
-    enum AVMediaType type;
+    enum AV_MediaType type;
     const char *type_name;
 
     if ((flags & AV_WRITE_UNCODED_FRAME_QUERY))

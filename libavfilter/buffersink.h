@@ -146,7 +146,7 @@ void av_buffersink_set_frame_size(AVFilterContext *ctx, unsigned frame_size);
  * @{
  */
 
-enum AVMediaType av_buffersink_get_type                (const AVFilterContext *ctx);
+enum AV_MediaType av_buffersink_get_type                (const AVFilterContext *ctx);
 AVRational       av_buffersink_get_time_base           (const AVFilterContext *ctx);
 int              av_buffersink_get_format              (const AVFilterContext *ctx);
 

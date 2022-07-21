@@ -145,7 +145,7 @@ static int decode_packet(AVCodecContext *dec, const AVPacket *pkt)
 }
 
 static int open_codec_context(int *stream_idx,
-                              AVCodecContext **dec_ctx, AVFormatContext *fmt_ctx, enum AVMediaType type)
+                              AVCodecContext **dec_ctx, AVFormatContext *fmt_ctx, enum AV_MediaType type)
 {
     int ret, stream_index;
     AVStream *st;

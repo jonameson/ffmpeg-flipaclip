@@ -1990,7 +1990,7 @@ fail:
 }
 
 static int get_nth_codec_stream_index(AVFormatContext *s,
-                                      enum AVMediaType codec_type,
+                                      enum AV_MediaType codec_type,
                                       int64_t stream_id)
 {
     unsigned int stream_index, cnt;
@@ -2012,7 +2012,7 @@ static int parse_variant_stream_mapstring(AVFormatContext *s)
     HLSContext *hls = s->priv_data;
     VariantStream *vs;
     int stream_index, i, j;
-    enum AVMediaType codec_type;
+    enum AV_MediaType codec_type;
     int nb_varstreams = 0, nb_streams;
     char *p, *q, *saveptr1, *saveptr2, *varstr, *keyval;
     const char *val;

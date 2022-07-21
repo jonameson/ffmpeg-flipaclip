@@ -2642,7 +2642,7 @@ static int mkv_query_codec(enum AVCodecID codec_id, int std_compliance)
             return 1;
 
     if (std_compliance < FF_COMPLIANCE_NORMAL) {
-        enum AVMediaType type = avcodec_get_type(codec_id);
+        enum AV_MediaType type = avcodec_get_type(codec_id);
         // mkv theoretically supports any video/audio through VFW/ACM
         if (type == AVMEDIA_TYPE_VIDEO || type == AVMEDIA_TYPE_AUDIO)
             return 1;

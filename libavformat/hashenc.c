@@ -110,7 +110,7 @@ static int streamhash_init(struct AVFormatContext *s)
 #endif
 
 #if CONFIG_HASH_MUXER || CONFIG_MD5_MUXER || CONFIG_STREAMHASH_MUXER
-static char get_media_type_char(enum AVMediaType type)
+static char get_media_type_char(enum AV_MediaType type)
 {
     switch (type) {
     case AVMEDIA_TYPE_VIDEO:      return 'v';

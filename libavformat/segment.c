@@ -601,14 +601,14 @@ static int select_reference_stream(AVFormatContext *s)
     if (!strcmp(seg->reference_stream_specifier, "auto")) {
         /* select first index of type with highest priority */
         int type_index_map[AVMEDIA_TYPE_NB];
-        static const enum AVMediaType type_priority_list[] = {
+        static const enum AV_MediaType type_priority_list[] = {
             AVMEDIA_TYPE_VIDEO,
             AVMEDIA_TYPE_AUDIO,
             AVMEDIA_TYPE_SUBTITLE,
             AVMEDIA_TYPE_DATA,
             AVMEDIA_TYPE_ATTACHMENT
         };
-        enum AVMediaType type;
+        enum AV_MediaType type;
 
         for (i = 0; i < AVMEDIA_TYPE_NB; i++)
             type_index_map[i] = -1;
