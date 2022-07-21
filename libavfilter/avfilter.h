@@ -96,7 +96,7 @@ const char *avfilter_pad_get_name(const AVFilterPad *pads, int pad_idx);
  *
  * @return type of the pad_idx'th pad in pads
  */
-enum AV_MediaType avfilter_pad_get_type(const AVFilterPad *pads, int pad_idx);
+enum AVMediaType avfilter_pad_get_type(const AVFilterPad *pads, int pad_idx);
 
 /**
  * The number of the filter inputs is not determined just by AVFilter.inputs.
@@ -475,7 +475,7 @@ struct AVFilterLink {
     AVFilterContext *dst;       ///< dest filter
     AVFilterPad *dstpad;        ///< input pad on the dest filter
 
-    enum AV_MediaType type;      ///< filter media type
+    enum AVMediaType type;      ///< filter media type
 
     /* These parameters apply only to video */
     int w;                      ///< agreed upon image width

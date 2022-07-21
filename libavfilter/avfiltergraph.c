@@ -366,7 +366,7 @@ static int filter_query_formats(AVFilterContext *ctx)
     AVFilterFormats *formats;
     AVFilterChannelLayouts *chlayouts;
     AVFilterFormats *samplerates;
-    enum AV_MediaType type = ctx->inputs  && ctx->inputs [0] ? ctx->inputs [0]->type :
+    enum AVMediaType type = ctx->inputs  && ctx->inputs [0] ? ctx->inputs [0]->type :
                             ctx->outputs && ctx->outputs[0] ? ctx->outputs[0]->type :
                             AVMEDIA_TYPE_VIDEO;
 

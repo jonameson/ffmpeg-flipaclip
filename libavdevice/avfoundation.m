@@ -762,8 +762,8 @@ static int avf_read_header(AVFormatContext *s)
     AVCaptureDevice *video_device = nil;
     AVCaptureDevice *audio_device = nil;
     // Find capture device
-    NSArray *devices = [AVCaptureDevice devicesWithMediaType:AV_MediaTypeVideo];
-    NSArray *devices_muxed = [AVCaptureDevice devicesWithMediaType:AV_MediaTypeMuxed];
+    NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+    NSArray *devices_muxed = [AVCaptureDevice devicesWithMediaType:AVMediaTypeMuxed];
 
     ctx->num_video_devices = [devices count] + [devices_muxed count];
     ctx->first_pts          = av_gettime();
@@ -800,7 +800,7 @@ static int avf_read_header(AVFormatContext *s)
 #endif
 
         av_log(ctx, AV_LOG_INFO, "AVFoundation audio devices:\n");
-        devices = [AVCaptureDevice devicesWithMediaType:AV_MediaTypeAudio];
+        devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeAudio];
         for (AVCaptureDevice *device in devices) {
             const char *name = [[device localizedName] UTF8String];
             int index  = [devices indexOfObject:device];
@@ -862,7 +862,7 @@ static int avf_read_header(AVFormatContext *s)
     } else if (ctx->video_filename &&
                strncmp(ctx->video_filename, "none", 4)) {
         if (!strncmp(ctx->video_filename, "default", 7)) {
-            video_device = [AVCaptureDevice defaultDeviceWithMediaType:AV_MediaTypeVideo];
+            video_device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
         } else {
         // looking for video inputs
         for (AVCaptureDevice *device in devices) {
@@ -922,7 +922,7 @@ static int avf_read_header(AVFormatContext *s)
 
     // get audio device
     if (ctx->audio_device_index >= 0) {
-        NSArray *devices = [AVCaptureDevice devicesWithMediaType:AV_MediaTypeAudio];
+        NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeAudio];
 
         if (ctx->audio_device_index >= [devices count]) {
             av_log(ctx, AV_LOG_ERROR, "Invalid audio device index\n");
@@ -933,9 +933,9 @@ static int avf_read_header(AVFormatContext *s)
     } else if (ctx->audio_filename &&
                strncmp(ctx->audio_filename, "none", 4)) {
         if (!strncmp(ctx->audio_filename, "default", 7)) {
-            audio_device = [AVCaptureDevice defaultDeviceWithMediaType:AV_MediaTypeAudio];
+            audio_device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeAudio];
         } else {
-        NSArray *devices = [AVCaptureDevice devicesWithMediaType:AV_MediaTypeAudio];
+        NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeAudio];
 
         for (AVCaptureDevice *device in devices) {
             if (!strncmp(ctx->audio_filename, [[device localizedName] UTF8String], strlen(ctx->audio_filename))) {
@@ -951,7 +951,7 @@ static int avf_read_header(AVFormatContext *s)
         }
     }
 
-    // Video nor Audio capture device not found, looking for AV_MediaTypeVideo/Audio
+    // Video nor Audio capture device not found, looking for AVMediaTypeVideo/Audio
     if (!video_device && !audio_device) {
         av_log(s, AV_LOG_ERROR, "No AV capture device found\n");
         goto fail;

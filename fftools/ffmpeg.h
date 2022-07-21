@@ -242,7 +242,7 @@ typedef struct InputFilter {
     struct InputStream *ist;
     struct FilterGraph *graph;
     uint8_t            *name;
-    enum AV_MediaType    type;   // AVMEDIA_TYPE_SUBTITLE for sub2video
+    enum AVMediaType    type;   // AVMEDIA_TYPE_SUBTITLE for sub2video
 
     AVFifoBuffer *frame_queue;
 
@@ -269,7 +269,7 @@ typedef struct OutputFilter {
 
     /* temporary storage until stream maps are processed */
     AVFilterInOut       *out_tmp;
-    enum AV_MediaType     type;
+    enum AVMediaType     type;
 
     /* desired output stream properties */
     int width, height;

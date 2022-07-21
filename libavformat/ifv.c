@@ -50,7 +50,7 @@ static int ifv_probe(const AVProbeData *p)
 }
 
 static int read_index(AVFormatContext *s,
-                      enum AV_MediaType frame_type,
+                      enum AVMediaType frame_type,
                       uint32_t start_index)
 {
     IFVContext *ifv = s->priv_data;

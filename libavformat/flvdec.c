@@ -459,6 +459,8 @@ static int parse_keyframes_index(AVFormatContext *s, AVIOContext *ioc, int64_t m
             d = av_int2double(avio_rb64(ioc));
             if (isnan(d) || d < INT64_MIN || d > INT64_MAX)
                 goto invalid;
+            if (current_array == &times && (d <= INT64_MIN / 1000 || d >= INT64_MAX / 1000))
+                goto invalid;
             current_array[0][i] = d;
         }
         if (times && filepositions) {
@@ -1137,7 +1139,7 @@ skip:
         }
     }
     if (i == s->nb_streams) {
-        static const enum AV_MediaType stream_types[] = {AVMEDIA_TYPE_VIDEO, AVMEDIA_TYPE_AUDIO, AVMEDIA_TYPE_SUBTITLE, AVMEDIA_TYPE_DATA};
+        static const enum AVMediaType stream_types[] = {AVMEDIA_TYPE_VIDEO, AVMEDIA_TYPE_AUDIO, AVMEDIA_TYPE_SUBTITLE, AVMEDIA_TYPE_DATA};
         st = create_stream(s, stream_types[stream_type]);
         if (!st)
             return AVERROR(ENOMEM);

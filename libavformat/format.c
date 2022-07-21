@@ -86,7 +86,7 @@ ff_const59 AVOutputFormat *av_guess_format(const char *short_name, const char *f
 
 enum AVCodecID av_guess_codec(ff_const59 AVOutputFormat *fmt, const char *short_name,
                               const char *filename, const char *mime_type,
-                              enum AV_MediaType type)
+                              enum AVMediaType type)
 {
     if (av_match_name("segment", fmt->name) || av_match_name("ssegment", fmt->name)) {
         ff_const59 AVOutputFormat *fmt2 = av_guess_format(NULL, filename, NULL);

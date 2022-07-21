@@ -1768,6 +1768,7 @@ static int mkv_write_attachments(AVFormatContext *s)
             put_ebml_string(dyn_cp, MATROSKA_ID_FILEDESC, t->value);
         if (!(t = av_dict_get(st->metadata, "filename", NULL, 0))) {
             av_log(s, AV_LOG_ERROR, "Attachment stream %d has no filename tag.\n", i);
+            ffio_free_dyn_buf(&dyn_cp);
             return AVERROR(EINVAL);
         }
         put_ebml_string(dyn_cp, MATROSKA_ID_FILENAME, t->value);
@@ -2641,7 +2642,7 @@ static int mkv_query_codec(enum AVCodecID codec_id, int std_compliance)
             return 1;
 
     if (std_compliance < FF_COMPLIANCE_NORMAL) {
-        enum AV_MediaType type = avcodec_get_type(codec_id);
+        enum AVMediaType type = avcodec_get_type(codec_id);
         // mkv theoretically supports any video/audio through VFW/ACM
         if (type == AVMEDIA_TYPE_VIDEO || type == AVMEDIA_TYPE_AUDIO)
             return 1;

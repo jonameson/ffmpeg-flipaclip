@@ -94,7 +94,7 @@ do {                                                                       \
 } while (0)
 
 static int merge_formats_internal(AVFilterFormats *a, AVFilterFormats *b,
-                                  enum AV_MediaType type, int check)
+                                  enum AVMediaType type, int check)
 {
     int i, j;
     int alpha1=0, alpha2=0;
@@ -133,14 +133,14 @@ static int merge_formats_internal(AVFilterFormats *a, AVFilterFormats *b,
 }
 
 int ff_can_merge_formats(const AVFilterFormats *a, const AVFilterFormats *b,
-                         enum AV_MediaType type)
+                         enum AVMediaType type)
 {
     return merge_formats_internal((AVFilterFormats *)a,
                                   (AVFilterFormats *)b, type, 1);
 }
 
 int ff_merge_formats(AVFilterFormats *a, AVFilterFormats *b,
-                     enum AV_MediaType type)
+                     enum AVMediaType type)
 {
     av_assert2(a->refcount && b->refcount);
     return merge_formats_internal(a, b, type, 0);
@@ -343,7 +343,7 @@ int ff_add_channel_layout(AVFilterChannelLayouts **l, uint64_t channel_layout)
     return 0;
 }
 
-AVFilterFormats *ff_all_formats(enum AV_MediaType type)
+AVFilterFormats *ff_all_formats(enum AVMediaType type)
 {
     AVFilterFormats *ret = NULL;
 
@@ -594,7 +594,7 @@ int ff_set_common_formats(AVFilterContext *ctx, AVFilterFormats *formats)
 int ff_default_query_formats(AVFilterContext *ctx)
 {
     int ret;
-    enum AV_MediaType type = ctx->nb_inputs  ? ctx->inputs [0]->type :
+    enum AVMediaType type = ctx->nb_inputs  ? ctx->inputs [0]->type :
                             ctx->nb_outputs ? ctx->outputs[0]->type :
                             AVMEDIA_TYPE_VIDEO;
 

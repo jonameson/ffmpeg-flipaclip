@@ -577,7 +577,7 @@ enum AVCodecID {
 /**
  * Get the type of the given codec.
  */
-enum AV_MediaType avcodec_get_type(enum AVCodecID codec_id);
+enum AVMediaType avcodec_get_type(enum AVCodecID codec_id);
 
 /**
  * Get the name of a codec.

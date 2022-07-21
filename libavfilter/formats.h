@@ -116,7 +116,7 @@ struct AVFilterChannelLayouts {
  * @return 1 if they are compatible, 0 if not.
  */
 int ff_can_merge_formats(const AVFilterFormats *a, const AVFilterFormats *b,
-                         enum AV_MediaType type);
+                         enum AVMediaType type);
 int ff_can_merge_samplerates(const AVFilterFormats *a, const AVFilterFormats *b);
 
 /**
@@ -134,7 +134,7 @@ int ff_can_merge_samplerates(const AVFilterFormats *a, const AVFilterFormats *b)
 int ff_merge_channel_layouts(AVFilterChannelLayouts *a,
                              AVFilterChannelLayouts *b);
 int ff_merge_formats(AVFilterFormats *a, AVFilterFormats *b,
-                     enum AV_MediaType type);
+                     enum AVMediaType type);
 int ff_merge_samplerates(AVFilterFormats *a, AVFilterFormats *b);
 
 /**
@@ -227,7 +227,7 @@ int ff_add_format(AVFilterFormats **avff, int64_t fmt);
  * Return a list of all formats supported by FFmpeg for the given media type.
  */
 av_warn_unused_result
-AVFilterFormats *ff_all_formats(enum AV_MediaType type);
+AVFilterFormats *ff_all_formats(enum AVMediaType type);
 
 /**
  * Construct a formats list containing all pixel formats with certain

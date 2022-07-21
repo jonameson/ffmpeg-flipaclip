@@ -1631,7 +1631,7 @@ static void print_final_stats(int64_t total_size)
 
         for (j = 0; j < f->nb_streams; j++) {
             InputStream *ist = input_streams[f->ist_index + j];
-            enum AV_MediaType type = ist->dec_ctx->codec_type;
+            enum AVMediaType type = ist->dec_ctx->codec_type;
 
             total_size    += ist->data_size;
             total_packets += ist->nb_packets;
@@ -1665,7 +1665,7 @@ static void print_final_stats(int64_t total_size)
 
         for (j = 0; j < of->ctx->nb_streams; j++) {
             OutputStream *ost = output_streams[of->ost_index + j];
-            enum AV_MediaType type = ost->enc_ctx->codec_type;
+            enum AVMediaType type = ost->enc_ctx->codec_type;
 
             total_size    += ost->data_size;
             total_packets += ost->packets_written;
@@ -1973,6 +1973,9 @@ static void flush_encoders(void)
             const char *desc = NULL;
             AVPacket *pkt = ost->pkt;
             int pkt_size;
+
+            if (!pkt)
+                break;
 
             switch (enc->codec_type) {
             case AVMEDIA_TYPE_AUDIO:
@@ -3463,12 +3466,7 @@ static int init_output_stream_encode(OutputStream *ost, AVFrame *frame)
             enc_ctx->bits_per_raw_sample = frame_bits_per_raw_sample;
         }
 
-        if (ost->top_field_first == 0) {
-            enc_ctx->field_order = AV_FIELD_BB;
-        } else if (ost->top_field_first == 1) {
-            enc_ctx->field_order = AV_FIELD_TT;
-        }
-
+        // Field order: autodetection
         if (frame) {
             if (enc_ctx->flags & (AV_CODEC_FLAG_INTERLACED_DCT | AV_CODEC_FLAG_INTERLACED_ME) &&
                 ost->top_field_first >= 0)
@@ -3481,6 +3479,13 @@ static int init_output_stream_encode(OutputStream *ost, AVFrame *frame)
                     enc_ctx->field_order = frame->top_field_first ? AV_FIELD_TB:AV_FIELD_BT;
             } else
                 enc_ctx->field_order = AV_FIELD_PROGRESSIVE;
+        }
+
+        // Field order: override
+        if (ost->top_field_first == 0) {
+            enc_ctx->field_order = AV_FIELD_BB;
+        } else if (ost->top_field_first == 1) {
+            enc_ctx->field_order = AV_FIELD_TT;
         }
 
         if (ost->forced_keyframes) {
@@ -3950,7 +3955,7 @@ static OutputStream *choose_output(void)
                 ost->st->index, ost->st->id, ost->initialized, ost->inputs_done, ost->finished);
 
         if (!ost->initialized && !ost->inputs_done)
-            return ost;
+            return ost->unavailable ? NULL : ost;
 
         if (!ost->finished && opts < opts_min) {
             opts_min = opts;

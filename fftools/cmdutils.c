@@ -1480,7 +1480,7 @@ static void print_codec(const AVCodec *c)
     }
 }
 
-static char get_media_type_char(enum AV_MediaType type)
+static char get_media_type_char(enum AVMediaType type)
 {
     switch (type) {
         case AVMEDIA_TYPE_VIDEO:    return 'V';

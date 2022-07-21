@@ -481,7 +481,7 @@ static int mpegps_read_packet(AVFormatContext *s,
     int pcm_dvd = 0;
     int request_probe= 0;
     enum AVCodecID codec_id = AV_CODEC_ID_NONE;
-    enum AV_MediaType type;
+    enum AVMediaType type;
     int64_t pts, dts, dummy_pos; // dummy_pos is needed for the index building to work
 
 redo:

@@ -85,7 +85,7 @@ typedef struct AdaptationSet {
     int64_t seg_duration;
     int64_t frag_duration;
     int frag_type;
-    enum AV_MediaType media_type;
+    enum AVMediaType media_type;
     AVDictionary *metadata;
     AVRational min_frame_rate, max_frame_rate;
     int ambiguous_frame_rate;
@@ -890,7 +890,7 @@ static int write_adaptation_set(AVFormatContext *s, AVIOContext *out, int as_ind
     return 0;
 }
 
-static int add_adaptation_set(AVFormatContext *s, AdaptationSet **as, enum AV_MediaType type)
+static int add_adaptation_set(AVFormatContext *s, AdaptationSet **as, enum AVMediaType type)
 {
     DASHContext *c = s->priv_data;
     void *mem;
@@ -1076,7 +1076,7 @@ static int parse_adaptation_sets(AVFormatContext *s)
 
             // if value is "a" or "v", map all streams of that type
             if (as->media_type == AVMEDIA_TYPE_UNKNOWN && (idx_str[0] == 'v' || idx_str[0] == 'a')) {
-                enum AV_MediaType type = (idx_str[0] == 'v') ? AVMEDIA_TYPE_VIDEO : AVMEDIA_TYPE_AUDIO;
+                enum AVMediaType type = (idx_str[0] == 'v') ? AVMEDIA_TYPE_VIDEO : AVMEDIA_TYPE_AUDIO;
                 av_log(s, AV_LOG_DEBUG, "Map all streams of type %s\n", idx_str);
 
                 for (i = 0; i < s->nb_streams; i++) {

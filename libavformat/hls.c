@@ -169,7 +169,7 @@ struct playlist {
  * playlist is NULL).
  */
 struct rendition {
-    enum AV_MediaType type;
+    enum AVMediaType type;
     struct playlist *playlist;
     char group_id[MAX_FIELD_LEN];
     char language[MAX_FIELD_LEN];
@@ -469,7 +469,7 @@ static struct rendition *new_rendition(HLSContext *c, struct rendition_info *inf
                                       const char *url_base)
 {
     struct rendition *rend;
-    enum AV_MediaType type = AVMEDIA_TYPE_UNKNOWN;
+    enum AVMediaType type = AVMEDIA_TYPE_UNKNOWN;
     char *characteristic;
     char *chr_ptr;
     char *saveptr;
@@ -810,10 +810,16 @@ static int parse_playlist(HLSContext *c, const char *url,
                                &info);
             new_rendition(c, &info, url);
         } else if (av_strstart(line, "#EXT-X-TARGETDURATION:", &ptr)) {
+            int64_t t;
             ret = ensure_playlist(c, &pls, url);
             if (ret < 0)
                 goto fail;
-            pls->target_duration = strtoll(ptr, NULL, 10) * AV_TIME_BASE;
+            t = strtoll(ptr, NULL, 10);
+            if (t < 0 || t >= INT64_MAX / AV_TIME_BASE) {
+                ret = AVERROR_INVALIDDATA;
+                goto fail;
+            }
+            pls->target_duration = t * AV_TIME_BASE;
         } else if (av_strstart(line, "#EXT-X-MEDIA-SEQUENCE:", &ptr)) {
             uint64_t seq_no;
             ret = ensure_playlist(c, &pls, url);
@@ -903,7 +909,7 @@ static int parse_playlist(HLSContext *c, const char *url,
                 if (has_iv) {
                     memcpy(seg->iv, iv, sizeof(iv));
                 } else {
-                    int64_t seq = pls->start_seq_no + pls->n_segments;
+                    uint64_t seq = pls->start_seq_no + (uint64_t)pls->n_segments;
                     memset(seg->iv, 0, sizeof(seg->iv));
                     AV_WB64(seg->iv + 8, seq);
                 }
@@ -1584,7 +1590,7 @@ reload:
 }
 
 static void add_renditions_to_variant(HLSContext *c, struct variant *var,
-                                      enum AV_MediaType type, const char *group_id)
+                                      enum AVMediaType type, const char *group_id)
 {
     int i;
 
@@ -1608,7 +1614,7 @@ static void add_renditions_to_variant(HLSContext *c, struct variant *var,
 }
 
 static void add_metadata_from_renditions(AVFormatContext *s, struct playlist *pls,
-                                         enum AV_MediaType type)
+                                         enum AVMediaType type)
 {
     int rend_idx = 0;
     int i;

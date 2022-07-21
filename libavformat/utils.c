@@ -343,7 +343,7 @@ static int set_codec_from_probe_data(AVFormatContext *s, AVStream *st,
     static const struct {
         const char *name;
         enum AVCodecID id;
-        enum AV_MediaType type;
+        enum AVMediaType type;
     } fmt_id_type[] = {
         { "aac",       AV_CODEC_ID_AAC,        AVMEDIA_TYPE_AUDIO },
         { "ac3",       AV_CODEC_ID_AC3,        AVMEDIA_TYPE_AUDIO },
@@ -1208,7 +1208,9 @@ static void update_initial_durations(AVFormatContext *s, AVStream *st,
             (pktl->pkt.dts == AV_NOPTS_VALUE ||
              pktl->pkt.dts == st->first_dts ||
              pktl->pkt.dts == RELATIVE_TS_BASE) &&
-            !pktl->pkt.duration) {
+            !pktl->pkt.duration &&
+            av_sat_add64(cur_dts, duration) == cur_dts + (uint64_t)duration
+        ) {
             pktl->pkt.dts = cur_dts;
             if (!st->internal->avctx->has_b_frames)
                 pktl->pkt.pts = cur_dts;
@@ -3912,8 +3914,10 @@ FF_ENABLE_DEPRECATION_WARNINGS
                     av_packet_unref(pkt1);
                 break;
             }
-            if (pkt->duration) {
-                if (avctx->codec_type == AVMEDIA_TYPE_SUBTITLE && pkt->pts != AV_NOPTS_VALUE && st->start_time != AV_NOPTS_VALUE && pkt->pts >= st->start_time) {
+            if (pkt->duration > 0) {
+                if (avctx->codec_type == AVMEDIA_TYPE_SUBTITLE && pkt->pts != AV_NOPTS_VALUE && st->start_time != AV_NOPTS_VALUE && pkt->pts >= st->start_time
+                    && (uint64_t)pkt->pts - st->start_time < INT64_MAX
+                ) {
                     st->internal->info->codec_info_duration = FFMIN(pkt->pts - st->start_time, st->internal->info->codec_info_duration + pkt->duration);
                 } else
                     st->internal->info->codec_info_duration += pkt->duration;
@@ -4059,7 +4063,7 @@ FF_ENABLE_DEPRECATION_WARNINGS
 
             if (!st->r_frame_rate.num) {
                 if (    avctx->time_base.den * (int64_t) st->time_base.num
-                    <= avctx->time_base.num * avctx->ticks_per_frame * (uint64_t) st->time_base.den) {
+                    <= avctx->time_base.num * (uint64_t)avctx->ticks_per_frame * st->time_base.den) {
                     av_reduce(&st->r_frame_rate.num, &st->r_frame_rate.den,
                               avctx->time_base.den, (int64_t)avctx->time_base.num * avctx->ticks_per_frame, INT_MAX);
                 } else {
@@ -4223,7 +4227,7 @@ AVProgram *av_find_program_from_stream(AVFormatContext *ic, AVProgram *last, int
     return NULL;
 }
 
-int av_find_best_stream(AVFormatContext *ic, enum AV_MediaType type,
+int av_find_best_stream(AVFormatContext *ic, enum AVMediaType type,
                         int wanted_stream_nb, int related_stream,
                         AVCodec **decoder_ret, int flags)
 {
@@ -4993,7 +4997,7 @@ void ff_parse_key_value(const char *str, ff_parse_key_val_cb callback_get_buf,
         key_len = ptr - key;
 
         callback_get_buf(context, key, key_len, &dest, &dest_len);
-        dest_end = dest + dest_len - 1;
+        dest_end = dest ? dest + dest_len - 1 : NULL;
 
         if (*ptr == '\"') {
             ptr++;
@@ -5176,7 +5180,7 @@ static int match_stream_specifier(AVFormatContext *s, AVStream *st,
             return match;
         } else if (*spec == 'v' || *spec == 'a' || *spec == 's' || *spec == 'd' ||
                    *spec == 't' || *spec == 'V') { /* opt:[vasdtV] */
-            enum AV_MediaType type;
+            enum AVMediaType type;
             int nopic = 0;
 
             switch (*spec++) {

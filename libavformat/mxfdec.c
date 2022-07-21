@@ -565,6 +565,10 @@ static int mxf_get_d10_aes3_packet(AVIOContext *pb, AVStream *st, AVPacket *pkt,
     data_ptr = pkt->data;
     end_ptr = pkt->data + length;
     buf_ptr = pkt->data + 4; /* skip SMPTE 331M header */
+
+    if (st->codecpar->channels > 8)
+        return AVERROR_INVALIDDATA;
+
     for (; end_ptr - buf_ptr >= st->codecpar->channels * 4; ) {
         for (i = 0; i < st->codecpar->channels; i++) {
             uint32_t sample = bytestream_get_le32(&buf_ptr);
@@ -624,7 +628,7 @@ static int mxf_decrypt_triplet(AVFormatContext *s, AVPacket *pkt, KLVPacket *klv
         return AVERROR_INVALIDDATA;
     // enc. code
     size = klv_decode_ber_length(pb);
-    if (size < 32 || size - 32 < orig_size)
+    if (size < 32 || size - 32 < orig_size || (int)orig_size != orig_size)
         return AVERROR_INVALIDDATA;
     avio_read(pb, ivec, 16);
     avio_read(pb, tmpbuf, 16);
@@ -871,15 +875,27 @@ static int mxf_read_cryptographic_context(void *arg, AVIOContext *pb, int tag, i
 
 static int mxf_read_strong_ref_array(AVIOContext *pb, UID **refs, int *count)
 {
-    *count = avio_rb32(pb);
+    int64_t ret;
+    unsigned c = avio_rb32(pb);
+
+    //avio_read() used int
+    if (c > INT_MAX / sizeof(UID))
+        return AVERROR_PATCHWELCOME;
+    *count = c;
+
     av_free(*refs);
-    *refs = av_calloc(*count, sizeof(UID));
+    *refs = av_malloc_array(*count, sizeof(UID));
     if (!*refs) {
         *count = 0;
         return AVERROR(ENOMEM);
     }
     avio_skip(pb, 4); /* useless size of objects, always 16 according to specs */
-    avio_read(pb, (uint8_t *)*refs, *count * sizeof(UID));
+    ret = avio_read(pb, (uint8_t *)*refs, *count * sizeof(UID));
+    if (ret != *count * sizeof(UID)) {
+        *count = ret < 0 ? 0   : ret / sizeof(UID);
+        return   ret < 0 ? ret : AVERROR_INVALIDDATA;
+    }
+
     return 0;
 }
 
@@ -1087,6 +1103,9 @@ static int mxf_read_essence_container_data(void *arg, AVIOContext *pb, int tag, 
 static int mxf_read_index_entry_array(AVIOContext *pb, MXFIndexTableSegment *segment)
 {
     int i, length;
+
+    if (segment->temporal_offset_entries)
+        return AVERROR_INVALIDDATA;
 
     segment->nb_index_entries = avio_rb32(pb);
 
@@ -2249,12 +2268,12 @@ static enum AVColorRange mxf_get_color_range(MXFContext *mxf, MXFDescriptor *des
         /* CDCI range metadata */
         if (!descriptor->component_depth)
             return AVCOL_RANGE_UNSPECIFIED;
-        if (descriptor->black_ref_level == 0 &&
+        if (descriptor->black_ref_level == 0 && descriptor->component_depth < 31 &&
             descriptor->white_ref_level == ((1<<descriptor->component_depth) - 1) &&
             (descriptor->color_range    == (1<<descriptor->component_depth) ||
              descriptor->color_range    == ((1<<descriptor->component_depth) - 1)))
             return AVCOL_RANGE_JPEG;
-        if (descriptor->component_depth >= 8 &&
+        if (descriptor->component_depth >= 8 && descriptor->component_depth < 31 &&
             descriptor->black_ref_level == (1  <<(descriptor->component_depth - 4)) &&
             descriptor->white_ref_level == (235<<(descriptor->component_depth - 8)) &&
             descriptor->color_range     == ((14<<(descriptor->component_depth - 4)) + 1))
@@ -2662,7 +2681,7 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
             }
             st->codecpar->bits_per_coded_sample = av_get_bits_per_sample(st->codecpar->codec_id);
         } else if (st->codecpar->codec_type == AVMEDIA_TYPE_DATA) {
-            enum AV_MediaType type;
+            enum AVMediaType type;
             container_ul = mxf_get_codec_ul(mxf_data_essence_container_uls, essence_container_ul);
             if (st->codecpar->codec_id == AV_CODEC_ID_NONE)
                 st->codecpar->codec_id = container_ul->id;
@@ -2903,7 +2922,7 @@ static int mxf_read_local_tags(MXFContext *mxf, KLVPacket *klv, MXFMetadataReadF
         meta = NULL;
         ctx  = mxf;
     }
-    while (avio_tell(pb) + 4 < klv_end && !avio_feof(pb)) {
+    while (avio_tell(pb) + 4ULL < klv_end && !avio_feof(pb)) {
         int ret;
         int tag = avio_rb16(pb);
         int size = avio_rb16(pb); /* KLV specified by 0x53 */

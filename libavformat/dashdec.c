@@ -547,9 +547,9 @@ static xmlNodePtr find_child_node_by_name(xmlNodePtr rootnode, const char *noden
     return NULL;
 }
 
-static enum AV_MediaType get_content_type(xmlNodePtr node)
+static enum AVMediaType get_content_type(xmlNodePtr node)
 {
-    enum AV_MediaType type = AVMEDIA_TYPE_UNKNOWN;
+    enum AVMediaType type = AVMEDIA_TYPE_UNKNOWN;
     int i = 0;
     const char *attr;
     char *val = NULL;
@@ -844,7 +844,7 @@ static int parse_manifest_representation(AVFormatContext *s, const char *url,
     xmlNodePtr baseurl_nodes[4];
     xmlNodePtr representation_node = node;
     char *rep_bandwidth_val;
-    enum AV_MediaType type = AVMEDIA_TYPE_UNKNOWN;
+    enum AVMediaType type = AVMEDIA_TYPE_UNKNOWN;
 
     // try get information from representation
     if (type == AVMEDIA_TYPE_UNKNOWN)

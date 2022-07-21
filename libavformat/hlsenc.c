@@ -1990,7 +1990,7 @@ fail:
 }
 
 static int get_nth_codec_stream_index(AVFormatContext *s,
-                                      enum AV_MediaType codec_type,
+                                      enum AVMediaType codec_type,
                                       int64_t stream_id)
 {
     unsigned int stream_index, cnt;
@@ -2012,7 +2012,7 @@ static int parse_variant_stream_mapstring(AVFormatContext *s)
     HLSContext *hls = s->priv_data;
     VariantStream *vs;
     int stream_index, i, j;
-    enum AV_MediaType codec_type;
+    enum AVMediaType codec_type;
     int nb_varstreams = 0, nb_streams;
     char *p, *q, *saveptr1, *saveptr2, *varstr, *keyval;
     const char *val;
@@ -2672,14 +2672,13 @@ static int hls_write_packet(AVFormatContext *s, AVPacket *pkt)
 
     vs->packets_written++;
     if (oc->pb) {
-        int64_t keyframe_pre_pos = avio_tell(oc->pb);
         ret = ff_write_chained(oc, stream_index, pkt, s, 0);
-        if ((st->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) &&
-            (pkt->flags & AV_PKT_FLAG_KEY) && !keyframe_pre_pos) {
-            av_write_frame(oc, NULL); /* Flush any buffered data */
-            vs->video_keyframe_size = avio_tell(oc->pb) - keyframe_pre_pos;
+        vs->video_keyframe_size += pkt->size;
+        if ((st->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) && (pkt->flags & AV_PKT_FLAG_KEY)) {
+            vs->video_keyframe_size = avio_tell(oc->pb);
+        } else {
+            vs->video_keyframe_pos = avio_tell(vs->out);
         }
-        vs->video_keyframe_pos = vs->start_pos;
         if (hls->ignore_io_errors)
             ret = 0;
     }
